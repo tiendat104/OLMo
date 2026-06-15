@@ -1,7 +1,7 @@
 """
 Sanity check for the ETD (Encode-Think-Decode) forward pass implementation.
 
-Verifies four properties:
+Verifies five properties:
   1. ETD-k=1 produces bit-for-bit identical logits to ETD-disabled (standard
      forward pass) when given the same weights and input.
   2. ETD-k=2,3,4,5 run without error and produce the correct output shape.
@@ -9,6 +9,9 @@ Verifies four properties:
      branch is actually entered and the thinking loop changes the computation.
   4. The first thinking block (block 7) is called exactly k times during a
      forward pass with etd_num_iterations=k — directly verifying the loop count.
+  5. When etd_encoder_layers is not set in the config (defaults to None), the
+     ETD-off (else) branch executes: block 7 is called exactly once and the
+     output is bit-for-bit identical to the ETD-disabled baseline.
 
 Architecture matches the OLMo 2 1B mid-training config exactly:
   16 layers, d_model=2048, n_heads=16, mlp_ratio=8, RoPE θ=500k,
@@ -210,7 +213,43 @@ def main():
         del model_k
         torch.cuda.empty_cache()
 
-    del model_std2, model_k2
+    # ------------------------------------------------------------------
+    # Test 5: When etd_encoder_layers is not set (defaults to None),
+    # the ETD-off (else) branch executes.
+    #
+    # Two checks together prove this:
+    #   (a) Block 7 is called exactly once — standard sequential pass,
+    #       no looping. If the ETD branch ran with k>1 it would be >1.
+    #   (b) Output is identical to the ETD-disabled baseline — the else
+    #       branch is the original code, so outputs must match exactly.
+    # ------------------------------------------------------------------
+    print("Test 5: ETD-off branch executes when etd_encoder_layers is not set ...")
+    model_off = OLMo(make_config(), init_params=False).to(dtype).eval()
+    model_off.load_state_dict(state_dict2)
+
+    think_block_off = model_off.transformer.blocks[7]
+    call_count_off = [0]
+    original_forward_off = think_block_off.forward
+
+    def counting_forward_off(*args, _orig=original_forward_off, _count=call_count_off, **kwargs):
+        _count[0] += 1
+        return _orig(*args, **kwargs)
+
+    think_block_off.forward = counting_forward_off
+
+    with torch.no_grad():
+        logits_off = model_off(input_ids2).logits
+
+    assert call_count_off[0] == 1, (
+        f"FAIL: ETD-off — block 7 called {call_count_off[0]} times, expected 1."
+    )
+    assert torch.equal(logits_std2, logits_off), (
+        "FAIL: ETD-off output differs from ETD-disabled baseline."
+    )
+    print("  PASS: ETD-off branch executed — block 7 called exactly once.")
+    print("  PASS: ETD-off output is bit-for-bit identical to ETD-disabled baseline.")
+
+    del model_off, model_std2, model_k2
     torch.cuda.empty_cache()
 
     print("\nAll tests passed.")
