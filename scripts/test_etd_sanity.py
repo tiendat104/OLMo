@@ -1,10 +1,14 @@
 """
 Sanity check for the ETD (Encode-Think-Decode) forward pass implementation.
 
-Verifies two properties:
+Verifies four properties:
   1. ETD-k=1 produces bit-for-bit identical logits to ETD-disabled (standard
      forward pass) when given the same weights and input.
   2. ETD-k=2,3,4,5 run without error and produce the correct output shape.
+  3. ETD-k=2 produces DIFFERENT logits from ETD-disabled — proving the ETD
+     branch is actually entered and the thinking loop changes the computation.
+  4. The first thinking block (block 7) is called exactly k times during a
+     forward pass with etd_num_iterations=k — directly verifying the loop count.
 
 Architecture matches the OLMo 2 1B mid-training config exactly:
   16 layers, d_model=2048, n_heads=16, mlp_ratio=8, RoPE θ=500k,
@@ -141,6 +145,72 @@ def main():
         torch.cuda.empty_cache()
 
     del model_std
+    torch.cuda.empty_cache()
+
+    # ------------------------------------------------------------------
+    # Test 3: ETD-k=2 must produce DIFFERENT logits from ETD-disabled.
+    #
+    # If the ETD branch is not entered (e.g., a bug in the if-condition
+    # causes the standard loop to run instead), the outputs would be
+    # identical to ETD-disabled. This catches that silent failure.
+    # With random weights the probability of accidental equality is zero.
+    # ------------------------------------------------------------------
+    print("Test 3: ETD-k=2 logits must differ from ETD-disabled ...")
+    model_std2 = OLMo(make_config(), init_params=True).to(dtype).eval()
+    state_dict2 = model_std2.state_dict()
+    input_ids2 = torch.randint(0, 100278, (batch_size, seq_len), device="cuda")
+
+    with torch.no_grad():
+        logits_std2 = model_std2(input_ids2).logits
+
+    cfg_k2 = make_config(etd_encoder_layers=7, etd_thinking_layers=4, etd_num_iterations=2)
+    model_k2 = OLMo(cfg_k2, init_params=False).to(dtype).eval()
+    model_k2.load_state_dict(state_dict2)
+
+    with torch.no_grad():
+        logits_k2 = model_k2(input_ids2).logits
+
+    assert not torch.equal(logits_std2, logits_k2), (
+        "FAIL: ETD-k=2 produced identical logits to ETD-disabled — "
+        "the ETD branch may not have been entered."
+    )
+    print("  PASS: ETD-k=2 logits differ from ETD-disabled (ETD branch is active).")
+
+    # ------------------------------------------------------------------
+    # Test 4: The first thinking block (block index 7) is called exactly
+    # k times per forward pass.
+    #
+    # We patch the block's forward method at the instance level to count
+    # calls without affecting other blocks or the class definition.
+    # ------------------------------------------------------------------
+    print("Test 4: thinking block call count equals etd_num_iterations ...")
+    for k in [1, 2, 3]:
+        cfg_k = make_config(etd_encoder_layers=7, etd_thinking_layers=4, etd_num_iterations=k)
+        model_k = OLMo(cfg_k, init_params=False).to(dtype).eval()
+        model_k.load_state_dict(state_dict2)
+
+        think_block = model_k.transformer.blocks[7]
+        call_count = [0]
+        original_forward = think_block.forward
+
+        def counting_forward(*args, _orig=original_forward, _count=call_count, **kwargs):
+            _count[0] += 1
+            return _orig(*args, **kwargs)
+
+        think_block.forward = counting_forward
+
+        with torch.no_grad():
+            model_k(input_ids2)
+
+        assert call_count[0] == k, (
+            f"FAIL: ETD-k={k} — thinking block called {call_count[0]} times, expected {k}."
+        )
+        print(f"  PASS: ETD-k={k} — thinking block called exactly {k} time(s).")
+
+        del model_k
+        torch.cuda.empty_cache()
+
+    del model_std2, model_k2
     torch.cuda.empty_cache()
 
     print("\nAll tests passed.")
