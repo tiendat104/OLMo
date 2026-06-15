@@ -58,3 +58,6 @@ core
 
 # checkpoints
 /checkpoints/
+
+# running
+/running/
