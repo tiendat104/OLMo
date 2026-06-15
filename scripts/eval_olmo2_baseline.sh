@@ -22,6 +22,12 @@ fi
 
 OUTPUT_DIR=${OLMO_ROOT}/eval_results/baseline_olmo2_1B/step${STEP}
 
+# Sanity checks
+if [ ! -f "${OLMES_BIN}" ]; then
+    echo "ERROR: olmes binary not found: ${OLMES_BIN}"
+    exit 1
+fi
+
 echo "Evaluating OLMo 2 1B baseline"
 echo "  Step:     ${STEP}"
 echo "  Revision: ${REVISION}"

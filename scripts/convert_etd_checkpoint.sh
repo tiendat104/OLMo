@@ -1,21 +1,37 @@
 #!/bin/bash
-# Usage: bash scripts/convert_etd_checkpoint.sh <step> [run_dir]
-# Example: bash scripts/convert_etd_checkpoint.sh 5
-#          bash scripts/convert_etd_checkpoint.sh 10 running/sanity/ETD_k2_per_step
+# Usage: bash scripts/convert_etd_checkpoint.sh <step> <k> [run_dir]
+# Example: bash scripts/convert_etd_checkpoint.sh 5 2
+#          bash scripts/convert_etd_checkpoint.sh 10 1 running/sanity/ETD_k1_per_step
 
 set -e
 
 STEP=$1
-RUN_DIR=${2:-running/sanity/ETD_k2_per_step}
+K=$2
+RUN_DIR=${3:-running/sanity/ETD_k${K}_per_step}
 TOKENIZER=/home/ubuntu/projects/Loop_Transformer_project/Work/replication/rep_olmo2_1B_midtrain/OLMo/olmo_data/tokenizers/allenai_dolma2.json
 
-if [ -z "$STEP" ]; then
-    echo "Usage: bash scripts/convert_etd_checkpoint.sh <step> [run_dir]"
+if [ -z "$STEP" ] || [ -z "$K" ]; then
+    echo "Usage: bash scripts/convert_etd_checkpoint.sh <step> <k> [run_dir]"
     exit 1
 fi
 
 CHECKPOINT_DIR=${RUN_DIR}/step${STEP}-unsharded
 DEST_DIR=${RUN_DIR}/step${STEP}-hf
+
+# Sanity checks
+if [ ! -d "${CHECKPOINT_DIR}" ]; then
+    echo "ERROR: unsharded checkpoint not found: ${CHECKPOINT_DIR}"
+    exit 1
+fi
+if [ ! -f "${TOKENIZER}" ]; then
+    echo "ERROR: tokenizer not found: ${TOKENIZER}"
+    exit 1
+fi
+if [ -d "${DEST_DIR}" ]; then
+    echo "WARNING: destination already exists: ${DEST_DIR}"
+    echo "  Delete it first if you want to re-convert. Skipping."
+    exit 0
+fi
 
 echo "Converting step ${STEP}: ${CHECKPOINT_DIR} -> ${DEST_DIR}"
 
