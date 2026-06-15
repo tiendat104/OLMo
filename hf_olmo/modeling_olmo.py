@@ -100,6 +100,10 @@ class OLMoForCausalLM(PreTrainedModel, GenerationMixin):
         if use_cache is None:
             use_cache = self.config.use_cache
 
+        # ETD with k>1 is incompatible with KV cache; fall back to recomputing attention each step.
+        if use_cache and getattr(self.config, "etd_num_iterations", 1) > 1:
+            use_cache = False
+
         if output_attentions:
             raise ValueError("output_attentions is not yet supported in OLMo")
 
