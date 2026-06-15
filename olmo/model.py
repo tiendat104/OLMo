@@ -1382,37 +1382,79 @@ class OLMo(nn.Module):
 
         # Apply blocks one-by-one.
         if self.config.block_group_size == 1:
-            for block_idx, block in enumerate(self.transformer.blocks):
-                if output_hidden_states:
-                    # add hidden states
-                    all_hidden_states.append(x)
+            if self.config.etd_encoder_layers is not None:
+                # ETD forward pass: encoder (once) → thinking (k times) → decoder (once).
+                # When etd_num_iterations=1 the block_indices list equals [0..n_layers-1],
+                # producing bit-for-bit identical output to the standard loop below.
+                if use_cache and self.config.etd_num_iterations > 1:
+                    raise ValueError("ETD with etd_num_iterations > 1 is incompatible with use_cache=True")
+                if self.config.etd_thinking_layers is None:
+                    raise OLMoConfigurationError("etd_thinking_layers must be set when etd_encoder_layers is set")
+                enc_end = self.config.etd_encoder_layers
+                think_end = enc_end + self.config.etd_thinking_layers
+                block_indices = list(range(enc_end))
+                for _ in range(self.config.etd_num_iterations):
+                    block_indices.extend(range(enc_end, think_end))
+                block_indices.extend(range(think_end, self.config.n_layers))
+                for block_idx in block_indices:
+                    if output_hidden_states:
+                        all_hidden_states.append(x)
+                    block = self.transformer.blocks[block_idx]
+                    layer_past = None if past_key_values is None else past_key_values[block_idx]
+                    if should_checkpoint_block(self.activation_checkpointing_strategy, block_idx):
+                        x, cache = self._activation_checkpoint_fn(
+                            block,
+                            x,
+                            attention_bias=attention_bias,
+                            layer_past=layer_past,
+                            use_cache=use_cache,
+                            max_doc_len=max_doc_len,
+                            cu_doc_lens=cu_doc_lens,
+                        )
+                    else:
+                        x, cache = block(
+                            x,
+                            attention_bias=attention_bias,
+                            layer_past=layer_past,
+                            use_cache=use_cache,
+                            max_doc_len=max_doc_len,
+                            cu_doc_lens=cu_doc_lens,
+                        )
+                    if attn_key_values is not None:
+                        assert cache is not None
+                        attn_key_values.append(cache)
+            else:
+                for block_idx, block in enumerate(self.transformer.blocks):
+                    if output_hidden_states:
+                        # add hidden states
+                        all_hidden_states.append(x)
 
-                layer_past = None if past_key_values is None else past_key_values[block_idx]
-                if should_checkpoint_block(self.activation_checkpointing_strategy, block_idx):
-                    # shape: (batch_size, seq_len, d_model)
-                    x, cache = self._activation_checkpoint_fn(
-                        block,
-                        x,
-                        attention_bias=attention_bias,
-                        layer_past=layer_past,
-                        use_cache=use_cache,
-                        max_doc_len=max_doc_len,
-                        cu_doc_lens=cu_doc_lens,
-                    )
-                else:
-                    # shape: (batch_size, seq_len, d_model)
-                    x, cache = block(
-                        x,
-                        attention_bias=attention_bias,
-                        layer_past=layer_past,
-                        use_cache=use_cache,
-                        max_doc_len=max_doc_len,
-                        cu_doc_lens=cu_doc_lens,
-                    )
+                    layer_past = None if past_key_values is None else past_key_values[block_idx]
+                    if should_checkpoint_block(self.activation_checkpointing_strategy, block_idx):
+                        # shape: (batch_size, seq_len, d_model)
+                        x, cache = self._activation_checkpoint_fn(
+                            block,
+                            x,
+                            attention_bias=attention_bias,
+                            layer_past=layer_past,
+                            use_cache=use_cache,
+                            max_doc_len=max_doc_len,
+                            cu_doc_lens=cu_doc_lens,
+                        )
+                    else:
+                        # shape: (batch_size, seq_len, d_model)
+                        x, cache = block(
+                            x,
+                            attention_bias=attention_bias,
+                            layer_past=layer_past,
+                            use_cache=use_cache,
+                            max_doc_len=max_doc_len,
+                            cu_doc_lens=cu_doc_lens,
+                        )
 
-                if attn_key_values is not None:
-                    assert cache is not None
-                    attn_key_values.append(cache)
+                    if attn_key_values is not None:
+                        assert cache is not None
+                        attn_key_values.append(cache)
         else:
             for group_idx, block_group in enumerate(self.transformer.block_groups):
                 if output_hidden_states:

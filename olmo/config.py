@@ -267,6 +267,26 @@ class ModelConfig(BaseConfig):
     The number of layers/blocks.
     """
 
+    etd_encoder_layers: Optional[int] = None
+    """
+    Number of encoder layers for ETD (Encode-Think-Decode). When set, enables the ETD
+    forward pass. The first ``etd_encoder_layers`` blocks are the encoder (run once).
+    When ``None``, the standard forward pass is used unchanged.
+    """
+
+    etd_thinking_layers: Optional[int] = None
+    """
+    Number of thinking layers for ETD. The next ``etd_thinking_layers`` blocks after the
+    encoder form the thinking block, which is run ``etd_num_iterations`` times with the
+    same shared weights.
+    """
+
+    etd_num_iterations: int = 1
+    """
+    Number of times to run the thinking block in ETD. k=1 is mathematically equivalent
+    to the standard forward pass. Must be >= 1.
+    """
+
     mlp_ratio: int = 4
     """
     The ratio of the inner MLP dimensionality to ``d_model``.
