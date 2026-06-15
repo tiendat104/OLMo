@@ -12,7 +12,11 @@ TASK=${3:-gsm8k::olmes}
 GPU=${CUDA_VISIBLE_DEVICES:-7}
 
 OLMO_ROOT=/home/ubuntu/projects/Loop_Transformer_project/Work/replication/rep_ETD/OLMo
-OLMES_BIN=/home/ubuntu/projects/Loop_Transformer_project/Work/replication/inference_inter_olmo2_1B_midtrain/olmes/.venv/bin/olmes
+OLMES_ROOT=/home/ubuntu/projects/Loop_Transformer_project/Work/replication/inference_inter_olmo2_1B_midtrain/olmes
+OLMES_BIN=${OLMES_ROOT}/.venv/bin/olmes
+
+# Ensure the venv's python is used for subprocesses launched by olmes
+export PATH=${OLMES_ROOT}/.venv/bin:$PATH
 
 if [ -z "$STEP" ] || [ -z "$REVISION" ]; then
     echo "Usage: bash scripts/eval_olmo2_baseline.sh <step> <revision> [task]"

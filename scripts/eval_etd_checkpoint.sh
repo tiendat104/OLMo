@@ -12,7 +12,11 @@ TASK=${4:-arc_challenge::olmes}
 GPU=${CUDA_VISIBLE_DEVICES:-6}
 
 OLMO_ROOT=/home/ubuntu/projects/Loop_Transformer_project/Work/replication/rep_ETD/OLMo
-OLMES_BIN=/home/ubuntu/projects/Loop_Transformer_project/Work/replication/inference_inter_olmo2_1B_midtrain/olmes/.venv/bin/olmes
+OLMES_ROOT=/home/ubuntu/projects/Loop_Transformer_project/Work/replication/inference_inter_olmo2_1B_midtrain/olmes
+OLMES_BIN=${OLMES_ROOT}/.venv/bin/olmes
+
+# Ensure the venv's python is used for subprocesses launched by olmes
+export PATH=${OLMES_ROOT}/.venv/bin:$PATH
 
 if [ -z "$STEP" ] || [ -z "$K" ]; then
     echo "Usage: bash scripts/eval_etd_checkpoint.sh <step> <k> [run_dir] [task]"
