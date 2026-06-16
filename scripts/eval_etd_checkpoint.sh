@@ -24,7 +24,8 @@ if [ -z "$STEP" ] || [ -z "$K" ]; then
 fi
 
 MODEL_PATH=${OLMO_ROOT}/${RUN_DIR}/step${STEP}-hf
-OUTPUT_DIR=${OLMO_ROOT}/eval_results/${RUN_DIR}/step${STEP}
+TASK_NAME="${TASK%%::*}"
+OUTPUT_DIR=${OLMO_ROOT}/eval_results/${RUN_DIR}/${TASK_NAME}/step${STEP}
 
 # Sanity checks
 if [ ! -f "${OLMES_BIN}" ]; then

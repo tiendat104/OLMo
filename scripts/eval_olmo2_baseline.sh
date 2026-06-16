@@ -12,11 +12,12 @@ TASK=${3:-gsm8k::olmes}
 GPU=${CUDA_VISIBLE_DEVICES:-7}
 
 OLMO_ROOT=/home/ubuntu/projects/Loop_Transformer_project/Work/replication/rep_ETD/OLMo
-OLMES_ROOT=/home/ubuntu/projects/Loop_Transformer_project/Work/replication/inference_inter_olmo2_1B_midtrain/olmes
-OLMES_BIN=${OLMES_ROOT}/.venv/bin/olmes
+# Use the conda env's olmes for vllm-based baseline evaluation (vllm is installed there)
+OLMES_BIN=/home/ubuntu/miniconda3/envs/inference_olmo2_ETD/bin/olmes
+CONDA_BIN=/home/ubuntu/miniconda3/envs/inference_olmo2_ETD/bin
 
-# Ensure the venv's python is used for subprocesses launched by olmes
-export PATH=${OLMES_ROOT}/.venv/bin:$PATH
+# Ensure the conda env's python is used for subprocesses launched by olmes
+export PATH=${CONDA_BIN}:$PATH
 
 if [ -z "$STEP" ] || [ -z "$REVISION" ]; then
     echo "Usage: bash scripts/eval_olmo2_baseline.sh <step> <revision> [task]"
@@ -24,11 +25,13 @@ if [ -z "$STEP" ] || [ -z "$REVISION" ]; then
     exit 1
 fi
 
-OUTPUT_DIR=${OLMO_ROOT}/eval_results/baseline_olmo2_1B/step${STEP}
+TASK_NAME="${TASK%%::*}"
+OUTPUT_DIR=${OLMO_ROOT}/eval_results/baseline_olmo2_1B/${TASK_NAME}/step${STEP}
 
 # Sanity checks
 if [ ! -f "${OLMES_BIN}" ]; then
     echo "ERROR: olmes binary not found: ${OLMES_BIN}"
+    echo "  Make sure the inference_olmo2_ETD conda env is installed."
     exit 1
 fi
 
