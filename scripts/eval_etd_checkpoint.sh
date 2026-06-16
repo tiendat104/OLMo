@@ -1,13 +1,13 @@
 #!/bin/bash
-# Usage: bash scripts/eval_etd_checkpoint.sh <step> <k> [run_dir] [task]
-# Example: bash scripts/eval_etd_checkpoint.sh 5 2
-#          bash scripts/eval_etd_checkpoint.sh 10 1 running/sanity/ETD_k1_per_step arc_challenge::olmes
+# Usage: bash scripts/eval_etd_checkpoint.sh <step> <k> <run_dir> [task]
+# Example: bash scripts/eval_etd_checkpoint.sh 5 2 running/sanity/ETD_k2_per_step
+#          bash scripts/eval_etd_checkpoint.sh 5 2 running/train/ETD_k2 arc_challenge::olmes
 
 set -e
 
 STEP=$1
 K=$2
-RUN_DIR=${3:-running/sanity/ETD_k${K}_per_step}
+RUN_DIR=$3
 TASK=${4:-arc_challenge::olmes}
 GPU=${CUDA_VISIBLE_DEVICES:-6}
 
@@ -18,14 +18,17 @@ OLMES_BIN=${OLMES_ROOT}/.venv/bin/olmes
 # Ensure the venv's python is used for subprocesses launched by olmes
 export PATH=${OLMES_ROOT}/.venv/bin:$PATH
 
-if [ -z "$STEP" ] || [ -z "$K" ]; then
-    echo "Usage: bash scripts/eval_etd_checkpoint.sh <step> <k> [run_dir] [task]"
+# Force HuggingFace to always re-read custom model code instead of using stale cache
+export HF_MODULES_CACHE=/tmp/hf_modules_etd_eval
+
+if [ -z "$STEP" ] || [ -z "$K" ] || [ -z "$RUN_DIR" ]; then
+    echo "Usage: bash scripts/eval_etd_checkpoint.sh <step> <k> <run_dir> [task]"
     exit 1
 fi
 
 MODEL_PATH=${OLMO_ROOT}/${RUN_DIR}/step${STEP}-hf
 TASK_NAME="${TASK%%::*}"
-OUTPUT_DIR=${OLMO_ROOT}/eval_results/${RUN_DIR}/${TASK_NAME}/step${STEP}
+OUTPUT_DIR=${OLMO_ROOT}/eval_results/${RUN_DIR}/step${STEP}/${TASK_NAME}
 
 # Sanity checks
 if [ ! -f "${OLMES_BIN}" ]; then
@@ -34,12 +37,12 @@ if [ ! -f "${OLMES_BIN}" ]; then
 fi
 if [ ! -d "${MODEL_PATH}" ]; then
     echo "ERROR: HF checkpoint not found: ${MODEL_PATH}"
-    echo "  Run convert first: bash scripts/convert_etd_checkpoint.sh ${STEP} ${K}"
+    echo "  Run convert first: bash scripts/convert_etd_checkpoint.sh ${STEP} ${K} ${RUN_DIR}"
     exit 1
 fi
 if [ ! -f "${MODEL_PATH}/modeling_olmo.py" ]; then
     echo "ERROR: ${MODEL_PATH}/modeling_olmo.py missing — conversion was incomplete."
-    echo "  Delete ${MODEL_PATH} and re-run: bash scripts/convert_etd_checkpoint.sh ${STEP} ${K}"
+    echo "  Delete ${MODEL_PATH} and re-run: bash scripts/convert_etd_checkpoint.sh ${STEP} ${K} ${RUN_DIR}"
     exit 1
 fi
 

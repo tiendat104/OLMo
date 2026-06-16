@@ -26,7 +26,7 @@ if [ -z "$STEP" ] || [ -z "$REVISION" ]; then
 fi
 
 TASK_NAME="${TASK%%::*}"
-OUTPUT_DIR=${OLMO_ROOT}/eval_results/baseline_olmo2_1B/${TASK_NAME}/step${STEP}
+OUTPUT_DIR=${OLMO_ROOT}/eval_results/baseline_olmo2_1B/step${STEP}/${TASK_NAME}
 
 # Sanity checks
 if [ ! -f "${OLMES_BIN}" ]; then

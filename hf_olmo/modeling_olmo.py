@@ -103,6 +103,7 @@ class OLMoForCausalLM(PreTrainedModel, GenerationMixin):
         # ETD with k>1 is incompatible with KV cache; fall back to recomputing attention each step.
         if use_cache and getattr(self.config, "etd_num_iterations", 1) > 1:
             use_cache = False
+            past_key_values = None  # DynamicCache objects from newer transformers must also be cleared
 
         if output_attentions:
             raise ValueError("output_attentions is not yet supported in OLMo")

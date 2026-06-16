@@ -35,11 +35,15 @@ fi
 
 echo "Converting step ${STEP}: ${CHECKPOINT_DIR} -> ${DEST_DIR}"
 
-# Convert to HF format
+# convert_olmo_to_hf.py modifies the source dir in-place before copying to destination.
+# To keep -unsharded untouched, work on a temporary copy instead.
+TEMP_DIR=$(mktemp -d)
+cp -r "${CHECKPOINT_DIR}/." "${TEMP_DIR}/"
 python hf_olmo/convert_olmo_to_hf.py \
-    --checkpoint-dir "${CHECKPOINT_DIR}" \
+    --checkpoint-dir "${TEMP_DIR}" \
     --destination-dir "${DEST_DIR}" \
     --tokenizer "${TOKENIZER}"
+rm -rf "${TEMP_DIR}"
 
 # Copy custom modeling files
 cp hf_olmo/modeling_olmo.py "${DEST_DIR}/"
