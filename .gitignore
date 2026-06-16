@@ -61,3 +61,6 @@ core
 
 # running
 /running/
+
+# results
+/eval_results/
