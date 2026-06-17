@@ -53,8 +53,6 @@ ALL_BENCHMARKS = [
 BENCHMARKS = [
     # Multi-Disciplinary Reasoning
     "arc_challenge::olmes",
-    "mmlu::olmes",
-    "mmlu_pro:mc::none",     # MMLU-Pro
     "agi_eval_english:1shot::olmes",  # AGIEval-English
 
     # Commonsense Reasoning
