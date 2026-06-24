@@ -391,9 +391,11 @@ if __name__ == "__main__":
         print(f"failed to set multiprocessing start method: {e}")
     log.info(f"Multiprocessing start method set to '{mp.get_start_method()}'")
     if is_npu_available():
-        # Set NPU device and initialize HCCL process group.
         torch.npu.set_device(get_local_rank())
-        dist.init_process_group(backend="hccl", timeout=timedelta(minutes=30))
+        if os.environ.get("RANK") is not None:
+            # Running under torchrun: RANK/WORLD_SIZE are set, safe to init HCCL.
+            dist.init_process_group(backend="hccl", timeout=timedelta(minutes=30))
+        # else: plain `python scripts/train.py` invocation (e.g. --help) – skip.
     elif torch.cuda.is_available():
         # Set CUDA device.
         torch.cuda.set_device(f"cuda:{get_local_rank()}")
