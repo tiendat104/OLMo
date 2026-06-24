@@ -47,6 +47,7 @@ from .config import (
 )
 from .exceptions import OLMoConfigurationError
 from .initialization import init_normal
+from .npu_util import is_npu_available
 from .torch_util import ensure_finite_, get_cumulative_document_lengths
 
 if sys.version_info.minor > 8:
@@ -120,7 +121,9 @@ def _non_meta_init_device(config: ModelConfig) -> torch.device:
     if config.init_device is not None and config.init_device != "meta":
         return torch.device(config.init_device)
     else:
-        if torch.backends.mps.is_available():
+        if is_npu_available():
+            return torch.device("npu")
+        elif torch.backends.mps.is_available():
             return torch.device("mps")
         elif torch.cuda.is_available():
             return torch.device("cuda")
@@ -525,6 +528,11 @@ class OLMoBlock(nn.Module):
             target_dtype = torch.get_autocast_cpu_dtype()
         elif bias.device.type == "mps":
             target_dtype = torch.get_autocast_dtype("mps")
+        elif bias.device.type == "npu":
+            try:
+                target_dtype = torch.get_autocast_dtype("npu")
+            except Exception:
+                pass  # keep input_dtype if NPU autocast dtype is unavailable
         if bias.dtype != target_dtype:
             bias = bias.to(target_dtype)
             ensure_finite_(bias, check_neg_inf=True, check_pos_inf=False)

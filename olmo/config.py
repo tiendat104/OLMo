@@ -894,13 +894,19 @@ class SingleGPUConfig(BaseConfig):
     """
 
     def get_device(self):
+        from .npu_util import is_npu_available
+
         if self.device == "auto":
-            if torch.backends.mps.is_available():
+            if is_npu_available():
+                return torch.device("npu")
+            elif torch.backends.mps.is_available():
                 return torch.device("mps")
             elif torch.cuda.is_available():
                 return torch.device("cuda")
             else:
                 return torch.device("cpu")
+        elif self.device == "npu" and not is_npu_available():
+            raise OLMoConfigurationError("NPU (torch_npu) not available.")
         elif self.device == "mps" and not torch.backends.mps.is_available():
             raise OLMoConfigurationError("MPS not available.")
         elif self.device == "cuda" and not torch.cuda.is_available():

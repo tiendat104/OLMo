@@ -28,6 +28,7 @@ from olmo.eval import build_evaluators
 from olmo.exceptions import OLMoCliError, OLMoConfigurationError
 from olmo.model import OLMo
 from olmo.optim import BoltOnWarmupScheduler, build_optimizer, build_scheduler
+from olmo.npu_util import is_npu_available
 from olmo.torch_util import (
     SingleAccelerator,
     barrier,
@@ -66,8 +67,11 @@ def main(cfg: TrainConfig) -> None:
 
     barrier()
 
-    # Set CUDA device.
-    if torch.cuda.is_available():
+    # Set accelerator device.
+    if is_npu_available():
+        torch.npu.set_device(get_local_rank())
+        device = torch.device(f"npu:{get_local_rank()}")
+    elif torch.cuda.is_available():
         torch.cuda.set_device(f"cuda:{get_local_rank()}")
         torch.cuda.empty_cache()
         device = torch.device("cuda")
@@ -204,7 +208,8 @@ def main(cfg: TrainConfig) -> None:
             if get_world_size() % num_model_replicas != 0:
                 raise OLMoConfigurationError("fsdp.hybrid_sharding_num_model_replicas must divide world size")
 
-            device_mesh = init_device_mesh("cuda", (num_model_replicas, get_world_size() // num_model_replicas))
+            mesh_device_type = "npu" if is_npu_available() else "cuda"
+            device_mesh = init_device_mesh(mesh_device_type, (num_model_replicas, get_world_size() // num_model_replicas))
             hybrid_sharding_fsdp_kwargs["device_mesh"] = device_mesh
 
         dist_model = FSDP(
@@ -385,7 +390,11 @@ if __name__ == "__main__":
     except RuntimeError as e:
         print(f"failed to set multiprocessing start method: {e}")
     log.info(f"Multiprocessing start method set to '{mp.get_start_method()}'")
-    if torch.cuda.is_available():
+    if is_npu_available():
+        # Set NPU device and initialize HCCL process group.
+        torch.npu.set_device(get_local_rank())
+        dist.init_process_group(backend="hccl", timeout=timedelta(minutes=30))
+    elif torch.cuda.is_available():
         # Set CUDA device.
         torch.cuda.set_device(f"cuda:{get_local_rank()}")
 
@@ -407,7 +416,6 @@ if __name__ == "__main__":
         if not os.getenv("MASTER_PORT"):
             os.environ["MASTER_PORT"] = "24501"
         dist.init_process_group(backend="gloo", timeout=timedelta(minutes=30))
-
     else:
         dist.init_process_group(backend="gloo", timeout=timedelta(minutes=30))
 
@@ -424,12 +432,19 @@ if __name__ == "__main__":
         raise OLMoCliError(f"Usage: {sys.argv[0]} [CONFIG_PATH] [OPTIONS]")
 
     cfg = TrainConfig.load(yaml_path, [clean_opt(s) for s in args_list])
-    if torch.backends.mps.is_available():
+    if is_npu_available():
+        log.info("Device is NPU. Updating config...")
+        # For single-device runs, pin the model to the correct NPU index.
+        # For multi-NPU FSDP runs, init_device: meta (from the config) is correct
+        # and should be left unchanged so FSDP can materialise on the NPU.
+        if cfg.distributed_strategy == DistributedStrategy.single or get_world_size() == 1:
+            cfg.model.init_device = f"npu:{get_local_rank()}"
+            cfg.distributed_strategy = "single"  # type: ignore
+    elif torch.backends.mps.is_available():
         log.info("Device is MPS. Updating config...")
         cfg.model.init_device = "mps"
         cfg.distributed_strategy = "single"  # type: ignore
-
-    if not torch.cuda.is_available() and not torch.backends.mps.is_available():
+    elif not torch.cuda.is_available():
         log.info("Device is CPU. Updating config...")
         cfg.model.init_device = "cpu"
         cfg.distributed_strategy = "single"  # type: ignore

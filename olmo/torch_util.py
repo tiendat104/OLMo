@@ -5,6 +5,8 @@ from typing import Optional, TypeVar
 import torch
 import torch.distributed as dist
 
+from .npu_util import is_npu_available
+
 T = TypeVar("T")
 
 
@@ -22,6 +24,8 @@ def seed_all(seed: int):
     # torch.manual_seed may call manual_seed_all but calling it again here
     # to make sure it gets called at least once
     torch.cuda.manual_seed_all(seed)
+    if is_npu_available():
+        torch.npu.manual_seed_all(seed)
 
 
 def is_distributed() -> bool:
@@ -90,6 +94,8 @@ def ensure_finite_(x: torch.Tensor, check_neg_inf: bool = True, check_pos_inf: b
 
 
 def get_default_device() -> torch.device:
+    if is_npu_available():
+        return torch.device("npu")
     if torch.cuda.is_available() and torch.cuda.is_initialized():
         return torch.device("cuda")
     elif torch.backends.mps.is_available():
@@ -145,6 +151,8 @@ def gc_cuda():
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
+    if is_npu_available():
+        torch.npu.empty_cache()
 
 
 def get_cumulative_document_lengths(doc_lens: torch.Tensor) -> torch.Tensor:

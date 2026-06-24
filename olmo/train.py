@@ -45,6 +45,7 @@ from .eval import Evaluator
 from .exceptions import OLMoConfigurationError
 from .model import OLMo
 from .optim import Optimizer, Scheduler
+from .npu_util import is_npu_available
 from .torch_util import (
     SingleAccelerator,
     barrier,
@@ -238,6 +239,11 @@ class Trainer:
         if self.cfg.fused_loss:
             if fused_loss_fn is not None:
                 self.loss_fn = fused_loss_fn
+            elif is_npu_available():
+                log.warning(
+                    "fused_loss=True requires flash_attn (CUDA-only); "
+                    "falling back to standard cross-entropy loss on NPU."
+                )
             else:
                 raise NameError("`fused_loss_fn` is not defined. Please ensure that `flash_attn` is installed.")
 
@@ -335,6 +341,7 @@ class Trainer:
                 "torch": torch.random.get_rng_state(),
                 "cuda": torch.cuda.get_rng_state() if torch.cuda.is_available() else None,
                 "mps": torch.mps.get_rng_state() if torch.backends.mps.is_available() else None,
+                "npu": torch.npu.get_rng_state() if is_npu_available() else None,
             },
         }
 
@@ -442,6 +449,11 @@ class Trainer:
                 torch.mps.set_rng_state(rng_state["mps"])
             else:
                 log.warning("MPS is available, but no RNG state was provided.")
+        if is_npu_available():
+            if rng_state.get("npu") is not None:
+                torch.npu.set_rng_state(rng_state["npu"])
+            else:
+                log.warning("NPU is available, but no RNG state was provided.")
 
     def _save_checkpoint(
         self, checkpointer: Checkpointer, checkpoint_type: CheckpointType
@@ -807,7 +819,7 @@ class Trainer:
             output_hooks += self._setup_module_output_save_hooks(micro_batch_idx)
 
             with grad_sync_context():
-                autocast_device = "mps" if self.device.type == "mps" else "cuda"
+                autocast_device = self.device.type if self.device.type in ("mps", "npu") else "cuda"
                 with torch.autocast(autocast_device, enabled=True, dtype=self.cfg.autocast_precision):
                     # Run forward pass.
                     loss, ce_loss, z_loss = self.train_micro_batch(micro_batch, batch_size_in_tokens)
@@ -912,7 +924,8 @@ class Trainer:
         return metrics
 
     def eval_batch(self, batch: Dict[str, Any]) -> Tuple[torch.Tensor, torch.Tensor]:
-        with torch.autocast("cuda", enabled=True, dtype=self.cfg.autocast_precision):
+        autocast_device = self.device.type if self.device.type in ("cuda", "mps", "npu") else "cuda"
+        with torch.autocast(autocast_device, enabled=True, dtype=self.cfg.autocast_precision):
             ce_loss, _, logits = self.model_forward(batch, loss_reduction="none")
         return ce_loss.mean(dim=-1), logits
 
