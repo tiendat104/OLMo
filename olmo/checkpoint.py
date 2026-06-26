@@ -1941,7 +1941,7 @@ class OlmoCoreCheckpointer(Checkpointer):
             )
 
             local_files_created = save_model_and_optim_state(
-                checkpoint_dir, dist_model, optim, save_overwrite=self.cfg.save_overwrite
+                checkpoint_dir, dist_model, optim
             )
             if upload_to is not None:
                 for path in local_files_created:
