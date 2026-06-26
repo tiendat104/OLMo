@@ -21,7 +21,8 @@ Requires Step 2 (ETD fields in olmo/config.py and ETD branch in olmo/model.py)
 to be applied before this script can run.
 
 Usage:
-    CUDA_VISIBLE_DEVICES=<n> python scripts/test_etd_sanity.py
+    CUDA_VISIBLE_DEVICES=<n>          python scripts/test_etd_sanity.py  # H100/CUDA
+    ASCEND_RT_VISIBLE_DEVICES=<n>     python scripts/test_etd_sanity.py  # Huawei NPU
 """
 
 import sys
@@ -33,6 +34,20 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from olmo.config import ActivationType, BlockType, InitFnType, LayerNormType, ModelConfig
 from olmo.model import OLMo
+from olmo.npu_util import is_npu_available
+
+
+def _get_device() -> str:
+    """Return 'npu' if a Huawei NPU is reachable, else 'cuda'."""
+    return "npu" if is_npu_available() else "cuda"
+
+
+def _empty_cache() -> None:
+    """Free cached memory on whichever accelerator is active."""
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    if is_npu_available():
+        torch.npu.empty_cache()
 
 
 def make_config(
@@ -72,7 +87,7 @@ def make_config(
         init_fn=InitFnType.normal,
         init_std=0.02,
         init_cutoff_factor=3,
-        init_device="cuda",
+        init_device=_get_device(),
         etd_encoder_layers=etd_encoder_layers,
         etd_thinking_layers=etd_thinking_layers,
         etd_num_iterations=etd_num_iterations,
@@ -80,10 +95,12 @@ def make_config(
 
 
 def main():
-    assert torch.cuda.is_available(), (
-        "This script requires a CUDA GPU. Run with CUDA_VISIBLE_DEVICES=<n>."
+    assert is_npu_available() or torch.cuda.is_available(), (
+        "This script requires a CUDA GPU or a Huawei NPU. "
+        "Run with CUDA_VISIBLE_DEVICES=<n> or ASCEND_RT_VISIBLE_DEVICES=<n>."
     )
 
+    device = _get_device()
     torch.manual_seed(42)
     dtype = torch.bfloat16
 
@@ -91,7 +108,7 @@ def main():
     # embedding_size=100352 (not vocab_size=100278) because weight_tying=False
     expected_shape = (batch_size, seq_len, 100352)
 
-    input_ids = torch.randint(0, 100278, (batch_size, seq_len), device="cuda")
+    input_ids = torch.randint(0, 100278, (batch_size, seq_len), device=device)
 
     # Build the baseline model (ETD disabled) with random weights.
     print("Building baseline model (ETD disabled, random weights) ...")
@@ -125,7 +142,7 @@ def main():
     print("  PASS: ETD-k=1 is bit-for-bit identical to ETD-disabled.")
 
     del model_k1
-    torch.cuda.empty_cache()
+    _empty_cache()
 
     # ------------------------------------------------------------------
     # Test 2: ETD-k=2,3,4,5 run without error and produce the right shape.
@@ -145,10 +162,10 @@ def main():
         print(f"  PASS: ETD-k={k} output shape {out.logits.shape}.")
 
         del model_k
-        torch.cuda.empty_cache()
+        _empty_cache()
 
     del model_std
-    torch.cuda.empty_cache()
+    _empty_cache()
 
     # ------------------------------------------------------------------
     # Test 3: ETD-k=2 must produce DIFFERENT logits from ETD-disabled.
@@ -161,7 +178,7 @@ def main():
     print("Test 3: ETD-k=2 logits must differ from ETD-disabled ...")
     model_std2 = OLMo(make_config(), init_params=True).to(dtype).eval()
     state_dict2 = model_std2.state_dict()
-    input_ids2 = torch.randint(0, 100278, (batch_size, seq_len), device="cuda")
+    input_ids2 = torch.randint(0, 100278, (batch_size, seq_len), device=device)
 
     with torch.no_grad():
         logits_std2 = model_std2(input_ids2).logits
@@ -211,7 +228,7 @@ def main():
         print(f"  PASS: ETD-k={k} — thinking block called exactly {k} time(s).")
 
         del model_k
-        torch.cuda.empty_cache()
+        _empty_cache()
 
     # ------------------------------------------------------------------
     # Test 5: When etd_encoder_layers is not set (defaults to None),
@@ -250,7 +267,7 @@ def main():
     print("  PASS: ETD-off output is bit-for-bit identical to ETD-disabled baseline.")
 
     del model_off, model_std2, model_k2
-    torch.cuda.empty_cache()
+    _empty_cache()
 
     print("\nAll tests passed.")
 
