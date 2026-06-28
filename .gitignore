@@ -64,3 +64,11 @@ core
 
 # results
 /eval_results/
+
+# move checkpoints
+move_checkpoints.log
+move_checkpoints.sh
+restore_checkpoints.sh
+
+# plots
+plots/
