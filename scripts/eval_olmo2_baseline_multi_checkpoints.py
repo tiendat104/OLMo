@@ -53,9 +53,26 @@ STEP_TO_REVISION = {
 # ── Edit this list to choose which checkpoints to evaluate ─────────────────
 # Only list the steps here; revisions are looked up in STEP_TO_REVISION above.
 STEPS = [
-    1000,
-    5000,
-    10000,
+    2000,
+    3000,
+    4000,
+    6000,
+    7000,
+    8000,
+    9000,
+    11000,
+    12000,
+    13000,
+    14000,
+    15000,
+    16000,
+    17000,
+    18000,
+    19000,
+    20000,
+    21000,
+    22000,
+    23000,
 ]
 
 # ── Edit this list to choose which benchmarks to evaluate ──────────────────
