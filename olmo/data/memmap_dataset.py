@@ -11,7 +11,7 @@ from olmo.exceptions import OLMoEnvironmentError
 
 from ..aliases import PathOrStr
 from ..config import InstanceFilterConfig
-from ..util import _get_s3_client, file_size, get_bytes_range
+from ..util import _get_s3_client, file_size, get_bytes_range, is_url
 from .util import find_periodic_sequences, get_document_lengths
 
 __all__ = ["MemMapDataset"]
@@ -100,20 +100,22 @@ class MemMapDataset(Dataset[Dict[str, Any]]):
 
     @property
     def offsets(self) -> List[Tuple[int, int]]:
-        # Create the global S3 client up front to work around a threading issue in boto.
-        _get_s3_client("s3")
-        try:
-            _get_s3_client("r2")
-        except OLMoEnvironmentError:
-            # R2 might not be needed, so ignore this error. We will get an error
-            # later if R2 is needed.
-            pass
-        try:
-            _get_s3_client("weka")
-        except OLMoEnvironmentError:
-            # Weka might not be needed, so ignore this error. We will get an error
-            # later if Weka is needed.
-            pass
+        all_paths = list(self._memmap_paths) + list(self._label_mask_paths or [])
+        if any(is_url(p) for p in all_paths):
+            # Create the global S3 client up front to work around a threading issue in boto.
+            _get_s3_client("s3")
+            try:
+                _get_s3_client("r2")
+            except OLMoEnvironmentError:
+                # R2 might not be needed, so ignore this error. We will get an error
+                # later if R2 is needed.
+                pass
+            try:
+                _get_s3_client("weka")
+            except OLMoEnvironmentError:
+                # Weka might not be needed, so ignore this error. We will get an error
+                # later if Weka is needed.
+                pass
 
         if self._mmap_offsets is None:
             import concurrent.futures
