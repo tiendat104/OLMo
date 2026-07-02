@@ -66,9 +66,9 @@ core
 /eval_results/
 
 # move checkpoints
-move_checkpoints.log
-move_checkpoints.sh
-restore_checkpoints.sh
+move_checkpoints_npu.log
+move_checkpoints_npu.sh
+restore_checkpoints_npu.sh
 
 # plots
 plots/
