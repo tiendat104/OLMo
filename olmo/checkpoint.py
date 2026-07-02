@@ -1940,6 +1940,13 @@ class OlmoCoreCheckpointer(Checkpointer):
                 lambda: (checkpoint_dir / "train").exists(), "Waiting for checkpoint train directory", timeout=10.0
             )
 
+            # Ensure all ranks finish wait_for checks before any rank enters
+            # save_model_and_optim_state. Without this, rank 0 can race ahead
+            # and call clear_directory() (triggered by save_overwrite=True inside
+            # _prepare_env_for_save) while slower ranks are still in wait_for,
+            # causing a TimeoutError on those ranks.
+            barrier()
+
             local_files_created = save_model_and_optim_state(
                 checkpoint_dir, dist_model, optim, save_overwrite=self.cfg.save_overwrite
             )
