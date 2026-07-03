@@ -8,7 +8,8 @@ set -e
 STEP=$1
 K=$2
 RUN_DIR=${3:-running/sanity/ETD_k${K}_per_step}
-TOKENIZER=/home/ubuntu/projects/Loop_Transformer_project/Work/replication/rep_olmo2_1B_midtrain/OLMo/olmo_data/tokenizers/allenai_dolma2.json
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TOKENIZER="${SCRIPT_DIR}/../olmo_data/tokenizers/allenai_dolma2.json"
 
 if [ -z "$STEP" ] || [ -z "$K" ]; then
     echo "Usage: bash scripts/convert_etd_checkpoint.sh <step> <k> [run_dir]"
