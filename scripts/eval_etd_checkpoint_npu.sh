@@ -20,8 +20,9 @@ NPU_DEVICE_INDEX=${NPU_DEVICE_INDEX:-0}
 
 OLMO_ROOT=/home/n84449292/tiendat/projects/Loop_Transformer_project/Work/replication/rep_ETD/OLMo
 
-# Force HuggingFace to always re-read custom model code instead of using stale cache
-export HF_MODULES_CACHE=/tmp/hf_modules_etd_eval
+# Force HuggingFace to always re-read custom model code instead of using stale cache.
+# Respects a pre-set value so parallel callers can each use their own isolated cache dir.
+export HF_MODULES_CACHE="${HF_MODULES_CACHE:-/tmp/hf_modules_etd_eval}"
 
 if [ -z "$STEP" ] || [ -z "$K" ] || [ -z "$RUN_DIR" ]; then
     echo "Usage: bash scripts/eval_etd_checkpoint_npu.sh <step> <k> <run_dir> [task]"
