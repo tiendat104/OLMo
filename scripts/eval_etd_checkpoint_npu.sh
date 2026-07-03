@@ -24,6 +24,12 @@ OLMO_ROOT=/home/n84449292/tiendat/projects/Loop_Transformer_project/Work/replica
 # Respects a pre-set value so parallel callers can each use their own isolated cache dir.
 export HF_MODULES_CACHE="${HF_MODULES_CACHE:-/tmp/hf_modules_etd_eval}"
 
+# oe_eval pulls benchmark datasets from the HF Hub by default, which hangs/fails
+# on the NPU server's unreliable proxy network. All benchmark data is already
+# cached locally from prior runs, so force cache-only access.
+export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
+export HF_DATASETS_OFFLINE="${HF_DATASETS_OFFLINE:-1}"
+
 if [ -z "$STEP" ] || [ -z "$K" ] || [ -z "$RUN_DIR" ]; then
     echo "Usage: bash scripts/eval_etd_checkpoint_npu.sh <step> <k> <run_dir> [task]"
     exit 1
