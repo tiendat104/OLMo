@@ -155,7 +155,14 @@ class OLMoForCausalLM(PreTrainedModel, GenerationMixin):
     def prepare_inputs_for_generation(
         self, input_ids: torch.LongTensor, past_key_values: Optional[List[Tuple]] = None, **kwargs
     ):
-        if past_key_values:
+        # Modern transformers pre-seeds `past_key_values` with an empty DynamicCache
+        # (truthy, and len() == num_layers) before the first forward pass even when
+        # no real caching ever happens, so truthiness alone can't signal "do we have
+        # a real cache". ETD with k>1 never produces one (see forward()), so it must
+        # always see the full sequence -- otherwise generation degenerates to feeding
+        # the model a single token per step with no context at all.
+        etd_num_iterations = getattr(self.config, "etd_num_iterations", 1)
+        if past_key_values and etd_num_iterations <= 1:
             # This is because we want the model to only process the last generated token.
             input_ids = input_ids[:, -1:]
         model_inputs = {"input_ids": input_ids, "past_key_values": past_key_values}

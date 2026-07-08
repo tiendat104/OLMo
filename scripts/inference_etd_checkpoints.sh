@@ -11,16 +11,15 @@
 # ── Configure here ──────────────────────────────────────────────────────────
 # Steps to inference (one per line or space-separated)
 STEPS=(
-    10000
-    12250
-    12500
-    12750
-    13000
+    23250
+    23500
+    23750
+    23852
 )
 
 K=2                                  # number of ETD thinking iterations
 RUN_DIR=running/replication/ETD_k2   # training run directory
-GPU=4                                # GPU index to use
+GPU=3                                # GPU index to use
 # ────────────────────────────────────────────────────────────────────────────
 
 cd "$(dirname "$0")/.." || exit 1    # run from repo root regardless of cwd
