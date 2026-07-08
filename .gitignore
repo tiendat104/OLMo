@@ -63,7 +63,7 @@ core
 /running/
 
 # results
-/eval_results/
+eval_results/
 
 # move checkpoints
 move_checkpoints_npu.log
