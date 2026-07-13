@@ -530,9 +530,10 @@ class OLMoBlock(nn.Module):
             target_dtype = torch.get_autocast_dtype("mps")
         elif bias.device.type == "npu":
             try:
-                target_dtype = torch.get_autocast_dtype("npu")
+                if torch.is_autocast_enabled("npu"):
+                    target_dtype = torch.get_autocast_dtype("npu")
             except Exception:
-                pass  # keep input_dtype if NPU autocast dtype is unavailable
+                pass  # keep input_dtype if NPU autocast state is unavailable
         if bias.dtype != target_dtype:
             bias = bias.to(target_dtype)
             ensure_finite_(bias, check_neg_inf=True, check_pos_inf=False)
