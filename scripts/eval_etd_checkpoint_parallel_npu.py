@@ -18,7 +18,7 @@ Arguments:
     run_dir   Path to the training run directory (e.g. running/ETD_k2_npu)
 
 Example:
-    python scripts/eval_etd_checkpoint_parallel_npu.py 23842 2 running/ETD_k2_npu
+    python scripts/eval_etd_checkpoint_parallel_npu.py 23852 2 running/ETD_k2_npu
 
 Edit BENCHMARK_NPU_MAP below to choose which benchmarks to run and which NPU
 device each one runs on. Benchmarks that map to the same device index run
@@ -125,7 +125,7 @@ def run_task_group(device, tasks, step, k, run_dir, log_dir, force):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("step", type=int, nargs="?", default=23842, help="Training step number (default: 23842)")
+    parser.add_argument("step", type=int, nargs="?", default=23852, help="Training step number (default: 23852)")
     parser.add_argument("k", type=int, nargs="?", default=2, help="Number of ETD thinking iterations (default: 2)")
     parser.add_argument(
         "run_dir",
