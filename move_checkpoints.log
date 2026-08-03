@@ -1,0 +1,144 @@
+[2026-06-19 21:24:50] Moving step500-unsharded...
+sending incremental file list
+created directory /mnt/data/tiendat/projects/Loop_Transformer_project/Work/replication/rep_ETD/OLMo/running/replication/ETD_k2/step500-unsharded
+./
+config.yaml
+         32.77K  41%    0.00kB/s    0:00:00           79.75K 100%   44.81MB/s    0:00:00 (xfr#1, to-chk=3/5)
+model.pt
+         32.77K   0%   31.25MB/s    0:03:05            1.09G  18%    1.02GB/s    0:00:04            2.25G  37%    1.05GB/s    0:00:03            3.36G  56%    1.04GB/s    0:00:02            4.54G  76%    1.06GB/s    0:00:01            5.71G  96%    1.08GB/s    0:00:00            5.94G 100%    1.07GB/s    0:00:05 (xfr#2, to-chk=2/5)
+optim.pt
+         32.77K   0%  168.42kB/s   19:35:34          926.97M   7%  884.03MB/s    0:00:12            2.11G  17% 1007.14MB/s    0:00:09            3.30G  27%    1.03GB/s    0:00:07            4.49G  37%    1.05GB/s    0:00:06            5.67G  47%    1.11GB/s    0:00:05            6.84G  57%    1.10GB/s    0:00:04            8.02G  67%    1.10GB/s    0:00:03            9.19G  77%    1.10GB/s    0:00:02           10.38G  87%    1.10GB/s    0:00:01           11.56G  97%    1.10GB/s    0:00:00           11.88G 100%    1.08GB/s    0:00:10 (xfr#3, to-chk=1/5)
+train.pt
+         15.00K 100%   55.48kB/s    0:00:00           15.00K 100%   55.48kB/s    0:00:00 (xfr#4, to-chk=0/5)
+[2026-06-19 21:25:06] Done step500-unsharded
+[2026-06-19 21:25:06] Moving step750-unsharded...
+sending incremental file list
+created directory /mnt/data/tiendat/projects/Loop_Transformer_project/Work/replication/rep_ETD/OLMo/running/replication/ETD_k2/step750-unsharded
+./
+config.yaml
+         32.77K  41%    0.00kB/s    0:00:00           79.75K 100%   44.81MB/s    0:00:00 (xfr#1, to-chk=3/5)
+model.pt
+         32.77K   0%   31.25MB/s    0:03:05            1.04G  17%  991.28MB/s    0:00:04            2.20G  37%    1.02GB/s    0:00:03            3.37G  56%    1.05GB/s    0:00:02            4.53G  76%    1.05GB/s    0:00:01            5.59G  94%    1.06GB/s    0:00:00            5.94G 100%    1.03GB/s    0:00:05 (xfr#2, to-chk=2/5)
+optim.pt
+         32.77K   0%   88.89kB/s   37:07:23          647.86M   5%  617.84MB/s    0:00:17            1.62G  13%  773.03MB/s    0:00:12            2.61G  21%  829.83MB/s    0:00:10            3.61G  30%  860.42MB/s    0:00:09            4.66G  39%  956.78MB/s    0:00:07            5.75G  48%  984.80MB/s    0:00:06            6.92G  58%    1.00GB/s    0:00:04            8.04G  67%    1.03GB/s    0:00:03            9.11G  76%    1.04GB/s    0:00:02           10.10G  85%    1.01GB/s    0:00:01           11.24G  94%    1.01GB/s    0:00:00           11.88G 100%  981.98MB/s    0:00:11 (xfr#3, to-chk=1/5)
+train.pt
+         15.00K 100%   26.73kB/s    0:00:00           15.00K 100%   26.73kB/s    0:00:00 (xfr#4, to-chk=0/5)
+[2026-06-19 21:25:23] Done step750-unsharded
+[2026-06-19 21:25:23] Moving step1000-unsharded...
+sending incremental file list
+created directory /mnt/data/tiendat/projects/Loop_Transformer_project/Work/replication/rep_ETD/OLMo/running/replication/ETD_k2/step1000-unsharded
+./
+config.yaml
+         32.77K  41%    0.00kB/s    0:00:00           79.75K 100%   44.81MB/s    0:00:00 (xfr#1, to-chk=3/5)
+model.pt
+         32.77K   0%   31.25MB/s    0:03:05            1.09G  18%    1.01GB/s    0:00:04            2.23G  37%    1.04GB/s    0:00:03            3.22G  54% 1023.03MB/s    0:00:02            4.16G  69%  991.70MB/s    0:00:01            5.13G  86%  964.61MB/s    0:00:00            5.94G 100%  973.96MB/s    0:00:05 (xfr#2, to-chk=2/5)
+optim.pt
+         32.77K   0%   38.98kB/s   84:39:41          208.70M   1%  199.03MB/s    0:00:57            1.38G  11%  657.50MB/s    0:00:15            2.53G  21%  805.07MB/s    0:00:11            3.69G  31%  880.17MB/s    0:00:09            4.84G  40%    1.08GB/s    0:00:06            6.16G  51%    1.11GB/s    0:00:04            7.54G  63%    1.17GB/s    0:00:03            8.90G  74%    1.21GB/s    0:00:02           10.27G  86%    1.26GB/s    0:00:01           11.61G  97%    1.27GB/s    0:00:00           11.88G 100%    1.09GB/s    0:00:10 (xfr#3, to-chk=1/5)
+train.pt
+         15.06K 100%   77.01kB/s    0:00:00           15.06K 100%   77.01kB/s    0:00:00 (xfr#4, to-chk=0/5)
+[2026-06-19 21:25:40] Done step1000-unsharded
+[2026-06-19 21:25:40] Moving step1250-unsharded...
+sending incremental file list
+created directory /mnt/data/tiendat/projects/Loop_Transformer_project/Work/replication/rep_ETD/OLMo/running/replication/ETD_k2/step1250-unsharded
+./
+config.yaml
+         32.77K  41%    0.00kB/s    0:00:00           79.75K 100%   44.81MB/s    0:00:00 (xfr#1, to-chk=3/5)
+model.pt
+         32.77K   0%   31.25MB/s    0:03:05            1.17G  19%    1.09GB/s    0:00:04            2.38G  39%    1.11GB/s    0:00:03            3.51G  59%    1.09GB/s    0:00:02            4.59G  77%    1.07GB/s    0:00:01            5.71G  96%    1.06GB/s    0:00:00            5.94G 100%    1.06GB/s    0:00:05 (xfr#2, to-chk=2/5)
+optim.pt
+         32.77K   0%  156.86kB/s   21:02:11          904.36M   7%  862.47MB/s    0:00:12            2.03G  17%  970.38MB/s    0:00:09            3.18G  26% 1011.87MB/s    0:00:08            4.30G  36%    1.00GB/s    0:00:07            5.53G  46%    1.08GB/s    0:00:05            6.78G  57%    1.10GB/s    0:00:04            8.04G  67%    1.13GB/s    0:00:03            9.33G  78%    1.17GB/s    0:00:02           10.58G  89%    1.18GB/s    0:00:01           11.78G  99%    1.17GB/s    0:00:00           11.88G 100%    1.10GB/s    0:00:10 (xfr#3, to-chk=1/5)
+train.pt
+         15.12K 100%  202.34kB/s    0:00:00           15.12K 100%  202.34kB/s    0:00:00 (xfr#4, to-chk=0/5)
+[2026-06-19 21:25:57] Done step1250-unsharded
+[2026-06-19 21:25:57] Moving step1500-unsharded...
+sending incremental file list
+created directory /mnt/data/tiendat/projects/Loop_Transformer_project/Work/replication/rep_ETD/OLMo/running/replication/ETD_k2/step1500-unsharded
+./
+config.yaml
+         32.77K  41%    0.00kB/s    0:00:00           79.75K 100%   44.81MB/s    0:00:00 (xfr#1, to-chk=3/5)
+model.pt
+         32.77K   0%   31.25MB/s    0:03:05            1.04G  17%  988.59MB/s    0:00:04            2.15G  36%    1.00GB/s    0:00:03            3.28G  55%    1.02GB/s    0:00:02            4.38G  73%    1.02GB/s    0:00:01            5.52G  92%    1.04GB/s    0:00:00            5.94G 100%    1.03GB/s    0:00:05 (xfr#2, to-chk=2/5)
+optim.pt
+         32.77K   0%   87.91kB/s   37:32:08          734.36M   6%  700.34MB/s    0:00:15            1.89G  15%  903.25MB/s    0:00:10            3.05G  25%  970.31MB/s    0:00:08            4.23G  35% 1008.70MB/s    0:00:07            5.41G  45%    1.09GB/s    0:00:05            6.59G  55%    1.09GB/s    0:00:04            7.92G  66%    1.14GB/s    0:00:03            9.22G  77%    1.16GB/s    0:00:02           10.42G  87%    1.17GB/s    0:00:01           11.60G  97%    1.17GB/s    0:00:00           11.88G 100%    1.08GB/s    0:00:10 (xfr#3, to-chk=1/5)
+train.pt
+         15.19K 100%   69.64kB/s    0:00:00           15.19K 100%   69.64kB/s    0:00:00 (xfr#4, to-chk=0/5)
+[2026-06-19 21:26:14] Done step1500-unsharded
+[2026-06-19 21:26:14] Moving step1750-unsharded...
+sending incremental file list
+created directory /mnt/data/tiendat/projects/Loop_Transformer_project/Work/replication/rep_ETD/OLMo/running/replication/ETD_k2/step1750-unsharded
+./
+config.yaml
+         32.77K  41%    0.00kB/s    0:00:00           79.75K 100%   44.81MB/s    0:00:00 (xfr#1, to-chk=3/5)
+model.pt
+         32.77K   0%   31.25MB/s    0:03:05          898.99M  15%  857.34MB/s    0:00:05            1.89G  31%  903.08MB/s    0:00:04            3.03G  51%  963.63MB/s    0:00:02            4.14G  69%  987.89MB/s    0:00:01            5.30G  89%    1.03GB/s    0:00:00            5.94G 100% 1021.38MB/s    0:00:05 (xfr#2, to-chk=2/5)
+optim.pt
+         32.77K   0%   58.08kB/s   56:49:08          596.41M   5%  568.78MB/s    0:00:19            1.90G  15%  904.59MB/s    0:00:10            3.19G  26% 1015.88MB/s    0:00:08            4.50G  37%    1.05GB/s    0:00:06            5.81G  48%    1.22GB/s    0:00:04            7.09G  59%    1.21GB/s    0:00:03            8.35G  70%    1.20GB/s    0:00:02            9.64G  81%    1.20GB/s    0:00:01           10.95G  92%    1.20GB/s    0:00:00           11.88G 100%    1.14GB/s    0:00:09 (xfr#3, to-chk=1/5)
+train.pt
+         15.19K 100%   20.89kB/s    0:00:00           15.19K 100%   20.89kB/s    0:00:00 (xfr#4, to-chk=0/5)
+[2026-06-19 21:26:31] Done step1750-unsharded
+[2026-06-19 21:26:31] Moving step2000-unsharded...
+sending incremental file list
+created directory /mnt/data/tiendat/projects/Loop_Transformer_project/Work/replication/rep_ETD/OLMo/running/replication/ETD_k2/step2000-unsharded
+./
+config.yaml
+         32.77K  41%    0.00kB/s    0:00:00           79.75K 100%   44.81MB/s    0:00:00 (xfr#1, to-chk=3/5)
+model.pt
+         32.77K   0%   31.25MB/s    0:03:05          882.48M  14%  841.59MB/s    0:00:05            1.79G  30%  855.02MB/s    0:00:04            2.82G  47%  896.71MB/s    0:00:03            3.94G  66%  939.56MB/s    0:00:02            5.23G  88%    1.01GB/s    0:00:00            5.94G 100% 1010.27MB/s    0:00:05 (xfr#2, to-chk=2/5)
+optim.pt
+         32.77K   0%   52.29kB/s   63:06:33          530.09M   4%  505.53MB/s    0:00:21            1.86G  15%  887.74MB/s    0:00:11            3.21G  27% 1021.15MB/s    0:00:08            4.58G  38%    1.07GB/s    0:00:06            5.94G  50%    1.26GB/s    0:00:04            7.31G  61%    1.27GB/s    0:00:03            8.67G  72%    1.27GB/s    0:00:02           10.03G  84%    1.27GB/s    0:00:01           11.41G  96%    1.27GB/s    0:00:00           11.88G 100%    1.19GB/s    0:00:09 (xfr#3, to-chk=1/5)
+train.pt
+         15.25K 100%   44.73kB/s    0:00:00           15.25K 100%   44.73kB/s    0:00:00 (xfr#4, to-chk=0/5)
+[2026-06-19 21:26:47] Done step2000-unsharded
+[2026-06-19 21:26:47] Moving step2250-unsharded...
+sending incremental file list
+created directory /mnt/data/tiendat/projects/Loop_Transformer_project/Work/replication/rep_ETD/OLMo/running/replication/ETD_k2/step2250-unsharded
+./
+config.yaml
+         32.77K  41%    0.00kB/s    0:00:00           79.75K 100%   44.81MB/s    0:00:00 (xfr#1, to-chk=3/5)
+model.pt
+         32.77K   0%   31.25MB/s    0:03:05          850.13M  14%  810.75MB/s    0:00:06            1.74G  29%  831.96MB/s    0:00:04            2.81G  47%  894.21MB/s    0:00:03            3.98G  67%  949.99MB/s    0:00:02            5.20G  87%    1.01GB/s    0:00:00            5.94G 100% 1020.64MB/s    0:00:05 (xfr#2, to-chk=2/5)
+optim.pt
+         32.77K   0%   57.66kB/s   57:13:53          582.58M   4%  555.59MB/s    0:00:19            1.81G  15%  863.95MB/s    0:00:11            3.16G  26% 1004.62MB/s    0:00:08            4.53G  38%    1.06GB/s    0:00:06            5.91G  49%    1.24GB/s    0:00:04            7.29G  61%    1.28GB/s    0:00:03            8.63G  72%    1.28GB/s    0:00:02           10.02G  84%    1.28GB/s    0:00:01           11.38G  95%    1.27GB/s    0:00:00           11.88G 100%    1.18GB/s    0:00:09 (xfr#3, to-chk=1/5)
+train.pt
+         15.25K 100%   40.70kB/s    0:00:00           15.25K 100%   40.70kB/s    0:00:00 (xfr#4, to-chk=0/5)
+[2026-06-19 21:27:03] Done step2250-unsharded
+[2026-06-19 21:27:03] Moving step2500-unsharded...
+sending incremental file list
+created directory /mnt/data/tiendat/projects/Loop_Transformer_project/Work/replication/rep_ETD/OLMo/running/replication/ETD_k2/step2500-unsharded
+./
+config.yaml
+         32.77K  41%    0.00kB/s    0:00:00           79.75K 100%   44.81MB/s    0:00:00 (xfr#1, to-chk=3/5)
+model.pt
+         32.77K   0%   31.25MB/s    0:03:05            1.05G  17% 1002.09MB/s    0:00:04            2.14G  35% 1020.12MB/s    0:00:03            3.23G  54%    1.00GB/s    0:00:02            4.35G  73%    1.01GB/s    0:00:01            5.66G  95%    1.07GB/s    0:00:00            5.94G 100%    1.06GB/s    0:00:05 (xfr#2, to-chk=2/5)
+optim.pt
+         32.77K   0%  139.74kB/s   23:36:52          979.99M   8%  934.59MB/s    0:00:11            2.31G  19%    1.08GB/s    0:00:08            3.58G  30%    1.11GB/s    0:00:07            4.73G  39%    1.10GB/s    0:00:06            6.03G  50%    1.18GB/s    0:00:04            7.41G  62%    1.19GB/s    0:00:03            8.73G  73%    1.20GB/s    0:00:02           10.13G  85%    1.26GB/s    0:00:01           11.53G  97%    1.28GB/s    0:00:00           11.88G 100%    1.20GB/s    0:00:09 (xfr#3, to-chk=1/5)
+train.pt
+         15.32K 100%   56.66kB/s    0:00:00           15.32K 100%   56.66kB/s    0:00:00 (xfr#4, to-chk=0/5)
+[2026-06-19 21:27:19] Done step2500-unsharded
+[2026-06-19 21:27:19] Moving step2750-unsharded...
+sending incremental file list
+created directory /mnt/data/tiendat/projects/Loop_Transformer_project/Work/replication/rep_ETD/OLMo/running/replication/ETD_k2/step2750-unsharded
+./
+config.yaml
+         32.77K  41%    0.00kB/s    0:00:00           79.75K 100%   44.81MB/s    0:00:00 (xfr#1, to-chk=3/5)
+model.pt
+         32.77K   0%   31.25MB/s    0:03:05          800.10M  13%  763.03MB/s    0:00:06            1.64G  27%  781.78MB/s    0:00:05            2.51G  42%  799.06MB/s    0:00:04            3.41G  57%  813.72MB/s    0:00:03            4.36G  73%  848.46MB/s    0:00:01            5.44G  91%  906.07MB/s    0:00:00            5.94G 100%  868.40MB/s    0:00:06 (xfr#2, to-chk=2/5)
+optim.pt
+         32.77K   0%   60.49kB/s   54:33:01          539.26M   4%  514.28MB/s    0:00:21            1.70G  14%  812.83MB/s    0:00:12            2.83G  23%  900.28MB/s    0:00:09            3.91G  32%  933.52MB/s    0:00:08            4.99G  42%    1.04GB/s    0:00:06            6.06G  51%    1.02GB/s    0:00:05            7.11G  59% 1021.34MB/s    0:00:04            8.17G  68% 1015.40MB/s    0:00:03            9.20G  77% 1003.66MB/s    0:00:02           10.26G  86% 1001.49MB/s    0:00:01           11.34G  95% 1009.74MB/s    0:00:00           11.88G 100%  985.83MB/s    0:00:11 (xfr#3, to-chk=1/5)
+train.pt
+         15.38K 100%   29.92kB/s    0:00:00           15.38K 100%   29.92kB/s    0:00:00 (xfr#4, to-chk=0/5)
+[2026-06-19 21:27:38] Done step2750-unsharded
+[2026-06-19 21:27:38] Moving step3000-unsharded...
+sending incremental file list
+created directory /mnt/data/tiendat/projects/Loop_Transformer_project/Work/replication/rep_ETD/OLMo/running/replication/ETD_k2/step3000-unsharded
+./
+config.yaml
+         32.77K  41%    0.00kB/s    0:00:00           79.75K 100%   44.81MB/s    0:00:00 (xfr#1, to-chk=3/5)
+model.pt
+         32.77K   0%   31.25MB/s    0:03:05          844.92M  14%  805.78MB/s    0:00:06            1.66G  27%  793.07MB/s    0:00:05            2.51G  42%  799.91MB/s    0:00:04            3.36G  56%  800.61MB/s    0:00:03            4.22G  71%  805.26MB/s    0:00:02            5.08G  85%  815.92MB/s    0:00:01            5.94G 100%  827.43MB/s    0:00:06 (xfr#2, to-chk=2/5)
+optim.pt
+         32.77K   0%   37.56kB/s   87:51:29          166.30M   1%  158.59MB/s    0:01:12            1.34G  11%  639.60MB/s    0:00:16            2.67G  22%  849.49MB/s    0:00:10            3.98G  33%  948.55MB/s    0:00:08            5.28G  44%    1.19GB/s    0:00:05            6.61G  55%    1.23GB/s    0:00:04            7.83G  65%    1.20GB/s    0:00:03            9.10G  76%    1.19GB/s    0:00:02           10.25G  86%    1.16GB/s    0:00:01           11.50G  96%    1.14GB/s    0:00:00           11.88G 100%    1.08GB/s    0:00:10 (xfr#3, to-chk=1/5)
+train.pt
+         15.38K 100%   50.57kB/s    0:00:00           15.38K 100%   50.57kB/s    0:00:00 (xfr#4, to-chk=0/5)
+[2026-06-19 21:27:56] Done step3000-unsharded
+All done.
