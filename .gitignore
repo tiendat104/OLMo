@@ -72,3 +72,7 @@ restore_checkpoints_npu.sh
 
 # plots
 plots/
+
+# ETD KV-cache test fixtures: the tiny snapshot is committed (reproducible check);
+# the 1B one is regenerated per-machine and too large to track.
+test_fixtures/etd/snapshot_full_*
