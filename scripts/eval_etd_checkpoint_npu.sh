@@ -18,7 +18,9 @@ RUN_DIR=$3
 TASK=${4:-arc_challenge::olmes}
 NPU_DEVICE_INDEX=${NPU_DEVICE_INDEX:-0}
 
-OLMO_ROOT=/home/n84449292/tiendat/projects/Loop_Transformer_project/Work/replication/rep_ETD/OLMo
+# Overridable so a separate working copy can evaluate without reading or writing
+# anything inside the replication checkout.
+OLMO_ROOT=${OLMO_ROOT:-/home/n84449292/tiendat/projects/Loop_Transformer_project/Work/replication/rep_ETD/OLMo}
 
 # Force HuggingFace to always re-read custom model code instead of using stale cache.
 # Respects a pre-set value so parallel callers can each use their own isolated cache dir.
@@ -35,9 +37,9 @@ if [ -z "$STEP" ] || [ -z "$K" ] || [ -z "$RUN_DIR" ]; then
     exit 1
 fi
 
-MODEL_PATH=${OLMO_ROOT}/${RUN_DIR}/step${STEP}-hf
+MODEL_PATH=${MODEL_PATH:-${OLMO_ROOT}/${RUN_DIR}/step${STEP}-hf}
 TASK_NAME="${TASK%%::*}"
-OUTPUT_DIR=${OLMO_ROOT}/eval_results/${RUN_DIR}/step${STEP}/${TASK_NAME}
+OUTPUT_DIR=${OUTPUT_DIR:-${OLMO_ROOT}/eval_results/${RUN_DIR}/step${STEP}/${TASK_NAME}}
 
 # Sanity checks
 if ! command -v olmes >/dev/null 2>&1; then
