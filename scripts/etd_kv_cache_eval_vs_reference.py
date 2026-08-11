@@ -38,16 +38,50 @@ def find_predictions(run_dir: Path) -> Optional[Path]:
     return None
 
 
-def load(path: Path) -> Dict[str, dict]:
-    out: Dict[str, dict] = {}
+def find_requests(run_dir: Path) -> Optional[Path]:
+    hits = sorted(run_dir.glob("**/*requests*.jsonl"))
+    return hits[0] if hits else None
+
+
+def question_by_doc_id(run_dir: Path) -> Dict[str, str]:
+    """Map this run's local doc_id to the question text.
+
+    Necessary because olmes --limit SUBSAMPLES rather than taking the first N, and
+    renumbers doc_id within the subset: doc_id 0 of a limited run is not doc_id 0 of the
+    full run. Matching on ids across runs therefore compares unrelated questions.  The
+    question text is the only stable key.
+    """
+    path = find_requests(run_dir)
+    mapping: Dict[str, str] = {}
+    if not path:
+        return mapping
     with path.open() as f:
         for line in f:
             line = line.strip()
             if not line:
                 continue
             rec = json.loads(line)
-            key = rec.get("doc_id", rec.get("native_id", rec.get("idx", len(out))))
-            out[str(key)] = rec
+            doc = rec.get("doc") or {}
+            q = doc.get("question") or doc.get("query") or doc.get("context")
+            key = rec.get("doc_id", rec.get("idx"))
+            if q is not None and key is not None:
+                mapping[str(key)] = " ".join(str(q).split())
+    return mapping
+
+
+def load(path: Path, questions: Dict[str, str]) -> Dict[str, dict]:
+    """Index predictions by question text where possible, falling back to doc_id."""
+    out: Dict[str, dict] = {}
+    for i, line in enumerate(path.open()):
+        line = line.strip()
+        if not line:
+            continue
+        rec = json.loads(line)
+        doc_id = str(rec.get("doc_id", rec.get("idx", i)))
+        doc = rec.get("doc") or {}
+        q = doc.get("question") or doc.get("query") or questions.get(doc_id)
+        key = " ".join(str(q).split()) if q else f"__docid__{doc_id}"
+        out[key] = rec
     return out
 
 
@@ -113,12 +147,24 @@ def main() -> int:
     print(f"\n  run predictions       : {run_p.name}")
     print(f"  reference predictions : {ref_p.name}")
 
-    run_recs, ref_recs = load(run_p), load(ref_p)
-    shared = sorted(set(run_recs) & set(ref_recs), key=lambda s: (len(s), s))
-    print(f"  examples: run {len(run_recs)}, reference {len(ref_recs)}, shared {len(shared)}")
+    run_recs = load(run_p, question_by_doc_id(run_dir))
+    ref_recs = load(ref_p, question_by_doc_id(ref_dir))
+
+    by_docid = sum(1 for k in run_recs if k.startswith("__docid__"))
+    if by_docid:
+        print(f"\n  WARNING: {by_docid} run records had no question text and fell back to doc_id.")
+        print("           olmes --limit subsamples and renumbers doc_id, so id-based matching")
+        print("           can compare unrelated questions. Treat those rows with suspicion.")
+
+    shared = sorted(set(run_recs) & set(ref_recs))
+    print(f"  examples: run {len(run_recs)}, reference {len(ref_recs)}, matched by question {len(shared)}")
     if not shared:
-        print("\nNo overlapping example ids -- cannot compare.")
+        print("\nNo questions in common -- cannot compare.")
+        print("If the run has only a couple of examples, it was probably skipped by olmes")
+        print("because its output directory already held results. Delete it and re-run.")
         return 1
+    if len(shared) < len(run_recs):
+        print(f"  note: {len(run_recs) - len(shared)} run examples had no match in the reference")
 
     scored = [(k, score_of(run_recs[k]), score_of(ref_recs[k])) for k in shared]
     usable = [(k, a, b) for k, a, b in scored if a is not None and b is not None]
@@ -150,8 +196,8 @@ def main() -> int:
         for k, a, b in differing[: args.show]:
             pos = next((i for i, (x, y) in enumerate(zip(a, b)) if x != y), min(len(a), len(b)))
             print(f"\n    --- example {k}, diverges at char {pos} ---")
-            print(f"      cached : ...{a[max(0, pos - 50):pos + 70]!r}")
-            print(f"      stored : ...{b[max(0, pos - 50):pos + 70]!r}")
+            print(f"      run    : ...{a[max(0, pos - 50):pos + 70]!r}")
+            print(f"      ref    : ...{b[max(0, pos - 50):pos + 70]!r}")
 
     print("\n" + "=" * 78)
     if usable:

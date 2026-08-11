@@ -139,6 +139,13 @@ PY
 # loading a stale pre-fix modeling_olmo.py.
 # ---------------------------------------------------------------------------------
 echo "[3/3] Running olmes ..."
+# olmes skips a task whose output directory already holds results ("already processed,
+# skipping"), which silently returns the previous run's numbers. Clear it unless the
+# caller explicitly asks to resume.
+if [ -d "${OUT_DIR}" ] && [ "${REUSE:-0}" != "1" ]; then
+    echo "  clearing previous results in ${OUT_DIR} (set REUSE=1 to keep them)"
+    rm -rf "${OUT_DIR}"
+fi
 mkdir -p "${OUT_DIR}"
 EXTRA=""
 [ "${LIMIT}" != "0" ] && EXTRA="--limit ${LIMIT}"
