@@ -131,6 +131,22 @@ def tolerances(dtype: torch.dtype) -> dict:
     return {}
 
 
+# k>1 must not be worse than the control group by more than this factor.
+# Observed worst ratio in practice: 1.5x (fp32 toy), 1.14x (bf16 1B) -- so 3x has
+# real teeth while leaving headroom for run-to-run variation.
+CONTROL_MULTIPLE = 3.0
+
+
+def calibration_ceiling(control_max: float, dtype: torch.dtype) -> float:
+    """Largest deviation a k>1 configuration may show, given the control group's.
+
+    Floored at the inherited absolute tolerance so that a control group which happens
+    to agree exactly (possible in bf16, where both paths can round identically) does
+    not collapse the ceiling to zero and fail every other configuration.
+    """
+    return max(control_max * CONTROL_MULTIPLE, tolerances(dtype).get("atol", 1e-5))
+
+
 def compare(a: torch.Tensor, b: torch.Tensor, dtype: torch.dtype) -> Tuple[bool, float]:
     """Return (within tolerance, observed max absolute deviation)."""
     deviation = (a.detach().double() - b.detach().double()).abs().max().item()
@@ -222,6 +238,24 @@ def test_2_3_4_cache_equivalence(profile: str, device: str, r: Results) -> None:
     ETD-off and k=1 are the CONTROL GROUP -- they exercise upstream's own caching on
     code ETD does not alter, and must pass before the fix exists.  If they fail, the
     harness is wrong, not the model.
+
+    Two different criteria are applied, deliberately:
+
+    * The control group is judged by UPSTREAM's own tolerances.  This ties the harness
+      to an external standard, on code neither the author nor the assistant wrote.
+    * k>1 is judged RELATIVE to the control group, not against an absolute threshold.
+
+    The reason for the second is that upstream's tolerances were chosen for a
+    single-step comparison of one token, and ``rtol=1e3`` makes them accept everything
+    except elements whose reference value is near zero -- so in bf16, across ~100k
+    logits, whether a configuration passes becomes a lottery over how close to zero the
+    smallest reference logit happens to be.  Observed on the NPU: ETD-off passed at
+    7.031e-02 while k=5 failed at 6.689e-02, a *smaller* deviation.  A criterion that
+    is not monotonic in the quantity it measures is not measuring anything.
+
+    The claim that actually matters is that looping's caching introduces no more error
+    than upstream's caching already does, which is exactly what a control-relative
+    bound states.
     """
     print("\nTests 2-4: cache == no-cache (single step)")
     dtype = PROFILES[profile]["dtype"]
@@ -240,37 +274,46 @@ def test_2_3_4_cache_equivalence(profile: str, device: str, r: Results) -> None:
                 ).logits[:, -1]
             ok, dev = compare(full, stepped, dtype)
             deviations[label] = dev
-            if ok:
-                r.add(test_id, label, PASS, f"max abs dev {dev:.3e}")
-            else:
-                r.add(test_id, label, FAIL, f"outside tolerance, max abs dev {dev:.3e}")
+            if label in CONTROL:
+                # Upstream's own criterion, on upstream's own code path.
+                if ok:
+                    r.add(test_id, label, PASS, f"max abs dev {dev:.3e} (upstream tolerance)")
+                else:
+                    r.add(test_id, label, FAIL, f"outside upstream tolerance, max abs dev {dev:.3e}")
+            # k>1 is judged below, once the control baseline is known.
         except Exception as exc:  # noqa: BLE001
             if is_prefix_error(exc) and label not in CONTROL:
                 r.add(test_id, label, RED, f"{type(exc).__name__}: {exc}")
             else:
                 r.add(test_id, label, FAIL, f"{type(exc).__name__}: {exc}")
 
-    _report_relative_calibration(deviations, r)
+    _judge_against_control(deviations, dtype, "4", r)
 
 
-def _report_relative_calibration(deviations: dict, r: Results) -> None:
-    """Absolute tolerance is not enough -- k>1 must also be the same order as control.
+def _judge_against_control(deviations: dict, dtype: torch.dtype, test_id: str, r: Results) -> None:
+    """Require every k>1 deviation to be within CONTROL_MULTIPLE of the control group.
 
-    A run where ETD-off disagrees by 1e-7 while k=5 disagrees by 1e-3 passes every
-    absolute threshold yet is clearly wrong.  Control-group magnitudes are measured
-    on upstream code before the fix exists, so this baseline cannot be gamed.
+    The control baseline is measured on upstream code, so it cannot be tuned in favour
+    of the implementation under test.  This is substantially tighter than an absolute
+    ceiling: a run where the control disagrees by 1e-7 while k=5 disagrees by 1e-3
+    would satisfy any inherited tolerance yet is clearly wrong, and fails here.
     """
     control = [d for label, d in deviations.items() if label in CONTROL]
     looped = {label: d for label, d in deviations.items() if label not in CONTROL}
     if not control or not looped:
         return
-    ceiling = max(max(control) * 100.0, 1e-12)
-    print(f"\n  relative calibration: control max dev {max(control):.3e}, ceiling {ceiling:.3e} (100x)")
+    control_max = max(control)
+    ceiling = calibration_ceiling(control_max, dtype)
+    print(
+        f"\n  control max dev {control_max:.3e} -> ceiling {ceiling:.3e} "
+        f"({CONTROL_MULTIPLE:g}x control, floored at atol)"
+    )
     for label, dev in looped.items():
+        ratio = dev / control_max if control_max > 0 else float("inf")
         if dev <= ceiling:
-            r.add("4", f"{label} calibration", PASS, f"{dev:.3e} within 100x of control")
+            r.add(test_id, label, PASS, f"{dev:.3e} = {ratio:.2f}x control")
         else:
-            r.add("4", f"{label} calibration", FAIL, f"{dev:.3e} exceeds 100x control ({ceiling:.3e})")
+            r.add(test_id, label, FAIL, f"{dev:.3e} = {ratio:.2f}x control, exceeds {ceiling:.3e}")
 
 
 # --------------------------------------------------------------------------------------
@@ -327,10 +370,18 @@ def test_6_multi_step_decode(profile: str, device: str, r: Results) -> None:
     benchmarks run hundreds of steps, so one-step correctness would be a false
     green.  Both paths are driven by the same token sequence so that any divergence
     is attributable to caching rather than to different inputs.
+
+    Judged control-relative, as in tests 2-4, and for a sharper reason here: upstream
+    has no multi-step criterion to inherit, and repeating a near-zero-logit lottery 16
+    times makes an absolute elementwise threshold fail for *every* configuration in
+    bf16, including pure upstream code.  The control group therefore defines the
+    baseline error that caching alone introduces over this many steps, and k>1 must
+    stay within CONTROL_MULTIPLE of it.
     """
     print(f"\nTest 6: multi-step decode ({DECODE_STEPS} steps)")
     dtype = PROFILES[profile]["dtype"]
     prompt = fixed_input(profile, device, BATCH, DECODE_PROMPT_LEN)
+    deviations = {}
 
     for label, etd, k in CASES:
         model, _ = configured_model(profile, device, etd, k, want_cache=True)
@@ -359,21 +410,23 @@ def test_6_multi_step_decode(profile: str, device: str, r: Results) -> None:
 
             worst = 0.0
             worst_step = -1
-            all_ok = True
             for step, (ref, cur) in enumerate(zip(reference, cached)):
-                ok, dev = compare(ref, cur, dtype)
-                all_ok &= ok
+                _, dev = compare(ref, cur, dtype)
                 if dev > worst:
                     worst, worst_step = dev, step
-            if all_ok:
-                r.add("6", label, PASS, f"{DECODE_STEPS} steps, worst dev {worst:.3e} @ step {worst_step}")
-            else:
-                r.add("6", label, FAIL, f"drift, worst dev {worst:.3e} @ step {worst_step}")
+            deviations[label] = worst
+            if label in CONTROL:
+                # The yardstick: how much error caching alone introduces over this many
+                # steps on upstream code. Recorded, not asserted -- there is no external
+                # multi-step criterion to hold it to.
+                r.add("6", label, PASS, f"baseline: worst dev {worst:.3e} @ step {worst_step}")
         except Exception as exc:  # noqa: BLE001
             if is_prefix_error(exc) and label not in CONTROL:
                 r.add("6", label, RED, f"{type(exc).__name__}: {exc}")
             else:
                 r.add("6", label, FAIL, f"{type(exc).__name__}: {exc}")
+
+    _judge_against_control(deviations, dtype, "6", r)
 
 
 # --------------------------------------------------------------------------------------
@@ -424,10 +477,19 @@ def test_8_hf_generation(profile: str, device: str, r: Results) -> None:
     re-running the full sequence and the fix is invisible to the benchmarks it
     exists to enable.
 
-    Two assertions, because tokens alone would be a false green -- if caching is
-    silently disabled, both runs take the identical uncached path and trivially
-    agree.  So we also instrument the inner model to confirm that cached decoding
-    really does feed one token per step.
+    What is asserted here is the MECHANISM: that cached decoding really does feed one
+    token per step rather than re-running the whole sequence, and that generation
+    completes.  Numerical equivalence is asserted in test 6 instead, where both paths
+    can be driven by the same tokens.
+
+    Exact token equality between cached and uncached generation is deliberately NOT
+    required.  These are two free-running greedy rollouts, and with random weights the
+    logit distribution is near-uniform, so the top-2 gap is routinely smaller than bf16
+    caching noise (~0.07): argmax flips, the sequences diverge, and everything after
+    that point is incomparable.  Observed on the NPU: ETD-off and k=1 -- pure upstream
+    code -- diverged, while k=3 happened not to.  No correct implementation would pass
+    that check reliably, so requiring it would only inject noise.  Token agreement is
+    still reported, as information.
     """
     print("\nTest 8: HuggingFace generation path")
     try:
@@ -468,17 +530,23 @@ def test_8_hf_generation(profile: str, device: str, r: Results) -> None:
                     prompt, max_new_tokens=DECODE_STEPS, do_sample=False, use_cache=False
                 )
 
-            tokens_match = torch.equal(cached_out, uncached_out)
             # After the prefill call, a genuinely cached run feeds one token at a time.
             really_cached = len(cached_calls) > 1 and all(n == 1 for n in cached_calls[1:])
+            # Reported for information only -- see the docstring for why it is not asserted.
+            new_tokens = cached_out.shape[1] - prompt.shape[1]
+            agree = int((cached_out[:, -new_tokens:] == uncached_out[:, -new_tokens:]).all(dim=0).sum())
 
-            if tokens_match and really_cached:
-                r.add("8", label, PASS, f"tokens match; per-step input lengths {cached_calls[:4]}...")
-            elif not really_cached:
+            if really_cached:
+                r.add(
+                    "8",
+                    label,
+                    PASS,
+                    f"cache in use; per-step input lengths {cached_calls[:4]}...; "
+                    f"tokens agreeing with uncached {agree}/{new_tokens} (informational)",
+                )
+            else:
                 status = RED if label not in CONTROL else FAIL
                 r.add("8", label, status, f"cache not used; per-step input lengths {cached_calls[:4]}...")
-            else:
-                r.add("8", label, FAIL, "cached and uncached generation produced different tokens")
         except Exception as exc:  # noqa: BLE001
             if is_prefix_error(exc) and label not in CONTROL:
                 r.add("8", label, RED, f"{type(exc).__name__}: {exc}")
