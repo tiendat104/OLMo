@@ -29,12 +29,29 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
+def _sync(device: str) -> None:
+    """Wait for the device to finish. Kernel launches are async, so timing without
+    this measures launch time rather than execution time."""
+    if device.startswith("npu"):
+        torch.npu.synchronize()
+    elif device.startswith("cuda"):
+        torch.cuda.synchronize()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--model-path", required=True)
     ap.add_argument("--device", default=None, help="e.g. npu:0 (default: auto)")
     ap.add_argument("--new-tokens", type=int, default=12)
     ap.add_argument("--prompt-len", type=int, default=64)
+    ap.add_argument(
+        "--benchmark",
+        action="store_true",
+        help="also time cached vs uncached generation at realistic gsm8k-like sizes, "
+        "with no evaluation harness in the loop",
+    )
+    ap.add_argument("--bench-prompt-len", type=int, default=750)
+    ap.add_argument("--bench-new-tokens", type=int, default=150)
     args = ap.parse_args()
 
     from olmo.npu_util import is_npu_available
@@ -130,6 +147,47 @@ def main() -> int:
 
     print("\n[4] generation with use_cache=True passed explicitly")
     explicit = run("generate(..., use_cache=True)")
+
+    # ---- direct cost measurement, no evaluation harness involved -----------------
+    if args.benchmark:
+        print("\n[5] cached vs uncached generation cost, harness excluded")
+        print(f"      prompt {args.bench_prompt_len} tokens, generating {args.bench_new_tokens}")
+        torch.manual_seed(1)
+        bench_prompt = torch.randint(0, vocab, (1, args.bench_prompt_len), device=device)
+
+        def timed(use_cache: bool) -> float:
+            # One short warm-up so kernel compilation is not billed to the measurement.
+            with torch.no_grad():
+                model.generate(bench_prompt, max_new_tokens=4, do_sample=False, use_cache=use_cache)
+            _sync(device)
+            started = time.time()
+            with torch.no_grad():
+                model.generate(
+                    bench_prompt,
+                    max_new_tokens=args.bench_new_tokens,
+                    do_sample=False,
+                    use_cache=use_cache,
+                )
+            _sync(device)
+            return time.time() - started
+
+        t_cached = timed(True)
+        t_uncached = timed(False)
+        per_tok_c = 1000 * t_cached / args.bench_new_tokens
+        per_tok_u = 1000 * t_uncached / args.bench_new_tokens
+        print(f"        cached   : {t_cached:6.2f}s   {per_tok_c:6.1f} ms/token")
+        print(f"        uncached : {t_uncached:6.2f}s   {per_tok_u:6.1f} ms/token")
+        print(f"        speedup  : {t_uncached / t_cached:.2f}x")
+        print()
+        if t_uncached / t_cached >= 1.5:
+            print("      The model DOES get materially faster with the cache. If an evaluation")
+            print("      harness shows no speedup, the harness dominates its own wall-clock")
+            print("      (per-step detokenisation for stop-sequence checks is the usual cause),")
+            print("      and harness timing cannot be used to judge decode cost.")
+        else:
+            print("      The model itself gains little from caching at this size. Worth")
+            print("      confirming against the batching sweep before drawing conclusions:")
+            print("      at batch 1 a 1B model may be dominated by fixed per-layer overhead.")
 
     # ---- verdict -----------------------------------------------------------------
     print("\n" + "=" * 78)
