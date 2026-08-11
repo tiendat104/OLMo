@@ -71,9 +71,33 @@ __all__ = [
     "OLMo",
     "OLMoOutput",
     "OLMoGenerateOutput",
+    "kv_cache_is_populated",
 ]
 
 log = logging.getLogger(__name__)
+
+
+def kv_cache_is_populated(past_key_values) -> bool:
+    """Whether a key/value cache actually holds anything yet.
+
+    ``transformers >= 4.4x`` seeds an *empty* ``DynamicCache`` before the first forward
+    pass of a generation loop. That object is truthy and reports ``len() == n_layers``,
+    so ordinary truthiness checks wrongly conclude a cache is available; indexing it
+    then yields ``(None, None)``. This distinguishes "a cache exists and has content"
+    from "a cache object exists but is empty".
+    """
+    if past_key_values is None:
+        return False
+    try:
+        if len(past_key_values) == 0:
+            return False
+        first = past_key_values[0]
+    except (IndexError, KeyError, TypeError):
+        return False
+    if first is None:
+        return False
+    key = first[0]
+    return key is not None and key.numel() > 0
 
 
 def activation_checkpoint_function(cfg: ModelConfig):
@@ -1259,6 +1283,33 @@ class OLMo(nn.Module):
         self.__cache["alibi_attention_bias"] = alibi_bias
         return alibi_bias
 
+    def etd_block_schedule(self) -> Optional[List[int]]:
+        """The order in which blocks are executed, when ETD is enabled.
+
+        Returns ``None`` when ETD is off, in which case the standard
+        ``0..n_layers-1`` order applies.
+
+        This is the single source of truth for the unrolled schedule: the forward pass
+        iterates it, and the KV cache is indexed by *position within it* rather than by
+        block index, since a looped block appears more than once.
+        """
+        if self.config.etd_encoder_layers is None:
+            return None
+        if self.config.etd_thinking_layers is None:
+            raise OLMoConfigurationError("etd_thinking_layers must be set when etd_encoder_layers is set")
+        enc_end = self.config.etd_encoder_layers
+        think_end = enc_end + self.config.etd_thinking_layers
+        schedule = list(range(enc_end))
+        for _ in range(self.config.etd_num_iterations):
+            schedule.extend(range(enc_end, think_end))
+        schedule.extend(range(think_end, self.config.n_layers))
+        return schedule
+
+    def expected_kv_cache_len(self) -> int:
+        """Number of KV cache entries a forward pass produces: one per executed layer."""
+        schedule = self.etd_block_schedule()
+        return self.config.n_layers if schedule is None else len(schedule)
+
     def forward(
         self,
         input_ids: torch.LongTensor,
@@ -1307,8 +1358,15 @@ class OLMo(nn.Module):
         """
         output_hidden_states = output_hidden_states if output_hidden_states is not None else False
 
+        # transformers >= 4.4x seeds an *empty* DynamicCache before the first forward
+        # pass. It is truthy and reports len() == n_layers, but every layer holds
+        # (None, None), so the past_length lookup below would dereference None. Treat an
+        # unpopulated cache as "no cache yet" rather than trusting truthiness.
+        if past_key_values is not None and not kv_cache_is_populated(past_key_values):
+            past_key_values = None
+
         if past_key_values:
-            assert len(past_key_values) == self.config.n_layers
+            assert len(past_key_values) == self.expected_kv_cache_len()
 
         batch_size, seq_len = input_ids.size() if input_embeddings is None else input_embeddings.size()[:2]
         if past_key_values is None:
@@ -1395,21 +1453,29 @@ class OLMo(nn.Module):
                 # ETD forward pass: encoder (once) → thinking (k times) → decoder (once).
                 # When etd_num_iterations=1 the block_indices list equals [0..n_layers-1],
                 # producing bit-for-bit identical output to the standard loop below.
-                if use_cache and self.config.etd_num_iterations > 1:
-                    raise ValueError("ETD with etd_num_iterations > 1 is incompatible with use_cache=True")
-                if self.config.etd_thinking_layers is None:
-                    raise OLMoConfigurationError("etd_thinking_layers must be set when etd_encoder_layers is set")
-                enc_end = self.config.etd_encoder_layers
-                think_end = enc_end + self.config.etd_thinking_layers
-                block_indices = list(range(enc_end))
-                for _ in range(self.config.etd_num_iterations):
-                    block_indices.extend(range(enc_end, think_end))
-                block_indices.extend(range(think_end, self.config.n_layers))
-                for block_idx in block_indices:
+                #
+                # Caching note: a looped block appears k times in the schedule, and each
+                # occurrence attends over a different hidden state, so each produces
+                # different keys and values. Cache slots are therefore indexed by
+                # position in the unrolled schedule, never by block index, and the cache
+                # holds one entry per *executed* layer. Sharing a slot across iterations
+                # is not an approximation — it is wrong.
+                if (
+                    (use_cache or past_key_values is not None)
+                    and self.config.etd_num_iterations > 1
+                    and not self.config.etd_kv_cache
+                ):
+                    raise ValueError(
+                        "ETD with etd_num_iterations > 1 is incompatible with use_cache=True "
+                        "unless model.etd_kv_cache is enabled."
+                    )
+                block_indices = self.etd_block_schedule()
+                assert block_indices is not None
+                for cache_idx, block_idx in enumerate(block_indices):
                     if output_hidden_states:
                         all_hidden_states.append(x)
                     block = self.transformer.blocks[block_idx]
-                    layer_past = None if past_key_values is None else past_key_values[block_idx]
+                    layer_past = None if past_key_values is None else past_key_values[cache_idx]
                     if should_checkpoint_block(self.activation_checkpointing_strategy, block_idx):
                         x, cache = self._activation_checkpoint_fn(
                             block,
