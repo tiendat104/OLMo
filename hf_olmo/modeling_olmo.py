@@ -1,4 +1,6 @@
 import logging
+import os
+import sys
 from dataclasses import fields
 from typing import Callable, List, Optional, Tuple, Union
 
@@ -14,6 +16,15 @@ from olmo.model import OLMo, kv_cache_is_populated
 from .configuration_olmo import OLMoConfig
 
 log = logging.getLogger(__name__)
+
+_KV_DEBUG_CALLS = [0]
+_KV_DEBUG_MAX = int(os.environ.get("ETD_KV_DEBUG_MAX", "40"))
+
+
+def _kv_debug_budget() -> bool:
+    """Allow only the first N debug lines, so a long evaluation is not flooded."""
+    _KV_DEBUG_CALLS[0] += 1
+    return _KV_DEBUG_CALLS[0] <= _KV_DEBUG_MAX
 
 
 def create_model_config_from_pretrained_config(config: OLMoConfig):
@@ -99,6 +110,21 @@ class OLMoForCausalLM(PreTrainedModel, GenerationMixin):
     ) -> Union[Tuple, CausalLMOutputWithPast]:
         if use_cache is None:
             use_cache = self.config.use_cache
+
+        # Set ETD_KV_DEBUG=1 to trace whether caching actually engages inside a harness
+        # that loads this file via trust_remote_code (olmes, lm-eval). Bounded so it
+        # cannot flood a long run; inert unless the variable is set.
+        if os.environ.get("ETD_KV_DEBUG") and _kv_debug_budget():
+            seq = tuple(input_ids.shape) if input_ids is not None else None
+            print(
+                f"[ETD_KV_DEBUG] input_ids={seq} use_cache={use_cache} "
+                f"past={type(past_key_values).__name__ if past_key_values is not None else None} "
+                f"populated={kv_cache_is_populated(past_key_values)} "
+                f"etd_k={getattr(self.config, 'etd_num_iterations', 1)} "
+                f"etd_kv_cache={getattr(self.config, 'etd_kv_cache', False)}",
+                file=sys.stderr,
+                flush=True,
+            )
 
         # ETD with k>1 can only use a KV cache when the opt-in switch is on, because the
         # cache must hold one entry per *executed* layer rather than one per block.
