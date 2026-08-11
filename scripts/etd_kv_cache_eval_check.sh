@@ -22,13 +22,27 @@
 # from the repo -- so the existing step<N>-hf folder still contains the pre-fix code and
 # would silently test nothing.
 #
-# Usage:
-#   bash scripts/etd_kv_cache_eval_check.sh off          # baseline: must match the stored result
-#   bash scripts/etd_kv_cache_eval_check.sh on           # the actual test
-#   TASK=drop::olmes bash scripts/etd_kv_cache_eval_check.sh on
+# DO NOT use a multiple-choice task here. BoolQ, OpenBookQA, CommonsenseQA, SocialIQA,
+# ARC, HellaSwag, MMLU and friends are scored by the log-likelihood of each option over
+# a fixed sequence: one forward pass per option, no incremental decoding, so the KV
+# cache is never touched. They would pass identically whether this fix is correct or
+# catastrophically broken. Their speed is exactly because they do not generate.
 #
-# Run 'off' first. It proves the new code with the switch disabled reproduces the
-# original score, isolating the cache as the only variable in the 'on' run.
+# LIMIT bounds the number of examples. The decisive comparison here is cache-off versus
+# cache-on under identical conditions, not against a published score, so a subset is
+# fully valid as long as both runs see the same one (they do -- olmes takes the first N).
+# Set LIMIT=0 for the full set, which additionally allows comparison against the stored
+# replication result.
+#
+# Usage:
+#   bash scripts/etd_kv_cache_eval_check.sh off          # baseline
+#   bash scripts/etd_kv_cache_eval_check.sh on           # the actual test
+#   LIMIT=0 TASK=triviaqa::olmes bash scripts/etd_kv_cache_eval_check.sh off
+#
+# Then diff the generated text per example, which is far sharper than comparing scores:
+#   python scripts/etd_kv_cache_eval_diff.py
+#
+# Run 'off' first. It isolates the cache as the only variable in the 'on' run.
 
 set -e
 
@@ -44,6 +58,7 @@ RUN_DIR=${RUN_DIR:-running/ETD_k2_npu}
 TASK=${TASK:-gsm8k::olmes}
 TASK_NAME="${TASK%%::*}"
 NPU_DEVICE_INDEX=${NPU_DEVICE_INDEX:-0}
+LIMIT=${LIMIT:-150}
 
 REPLICATION_ROOT=${REPLICATION_ROOT:-/home/n84449292/tiendat/projects/Loop_Transformer_project/Work/replication/rep_ETD/OLMo}
 WORK_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -56,6 +71,7 @@ echo "==========================================================================
 echo "ETD KV-cache end-to-end check"
 echo "  checkpoint : ${REPLICATION_ROOT}/${RUN_DIR}/step${STEP}-unsharded  (read-only)"
 echo "  task       : ${TASK}"
+echo "  examples   : $( [ "${LIMIT}" = "0" ] && echo "all" || echo "${LIMIT} (first N; same subset for both modes)" )"
 echo "  KV cache   : ${MODE}"
 echo "  export     : ${EXPORT_DIR}"
 echo "  results    : ${OUT_DIR}"
@@ -124,20 +140,27 @@ PY
 # ---------------------------------------------------------------------------------
 echo "[3/3] Running olmes ..."
 mkdir -p "${OUT_DIR}"
+EXTRA=""
+[ "${LIMIT}" != "0" ] && EXTRA="--limit ${LIMIT}"
+STARTED=$(date +%s)
 OLMO_ROOT="${WORK_ROOT}" \
 MODEL_PATH="${EXPORT_DIR}" \
 OUTPUT_DIR="${OUT_DIR}" \
 HF_MODULES_CACHE="${WORK_ROOT}/kvcache_check/hf_modules_${MODE}" \
 NPU_DEVICE_INDEX="${NPU_DEVICE_INDEX}" \
+OLMES_EXTRA_ARGS="${EXTRA}" \
     bash "${WORK_ROOT}/scripts/eval_etd_checkpoint_npu.sh" "${STEP}" "${K}" "${RUN_DIR}" "${TASK}"
+ELAPSED=$(( $(date +%s) - STARTED ))
 
 # ---------------------------------------------------------------------------------
 # Report alongside the stored replication number.
 # ---------------------------------------------------------------------------------
 echo
 echo "=============================================================================="
-echo "RESULT  task=${TASK}  cache=${MODE}"
+echo "RESULT  task=${TASK}  cache=${MODE}  wall-clock ${ELAPSED}s"
 echo "=============================================================================="
+echo "  (wall-clock is itself a signal: if cache=on is not markedly faster than"
+echo "   cache=off, caching did not engage and the score means nothing.)"
 python3 - "$OUT_DIR" "$REFERENCE" <<'PY'
 import json, os, sys
 

@@ -61,11 +61,15 @@ echo "Evaluating ETD-k${K} step ${STEP} on task '${TASK}' (NPU device ${NPU_DEVI
 echo "  Model: ${MODEL_PATH}"
 echo "  Output: ${OUTPUT_DIR}"
 
+# OLMES_EXTRA_ARGS passes flags straight through, e.g. OLMES_EXTRA_ARGS="--limit 150"
+# to bound runtime when comparing two configurations against each other rather than
+# against a published score.
 olmes \
     --model etd-k${K}-step${STEP} \
     --model-type hf \
     --model-args "model_path=${MODEL_PATH},trust_remote_code=True,device=npu:${NPU_DEVICE_INDEX}" \
     --task "${TASK}" \
-    --output-dir "${OUTPUT_DIR}"
+    --output-dir "${OUTPUT_DIR}" \
+    ${OLMES_EXTRA_ARGS}
 
 echo "Done: results saved to ${OUTPUT_DIR}"
