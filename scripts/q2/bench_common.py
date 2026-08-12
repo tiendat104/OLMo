@@ -27,12 +27,21 @@ import os
 import platform
 import socket
 import subprocess
+import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 import torch
+
+# Long sweeps are normally run through `| tee`, and Python block-buffers stdout when
+# it is piped -- so progress appears only in multi-KB bursts, and a healthy run looks
+# hung. Line-buffer stdout on import so every experiment prints as it goes.
+try:
+    sys.stdout.reconfigure(line_buffering=True)
+except Exception:  # noqa: BLE001  -- not available on every stream type
+    pass
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 RESULTS_DIR = REPO_ROOT / "q2_results"
