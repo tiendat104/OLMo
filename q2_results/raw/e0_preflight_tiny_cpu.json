@@ -1,0 +1,83 @@
+{
+  "metadata": {
+    "timestamp": "2026-08-12T14:42:59",
+    "commit": "0bb4853fdf478006c1fd40f6e05a4215e2eab2b9",
+    "branch": "Q2",
+    "dirty": true,
+    "profile": "tiny",
+    "device": "cpu",
+    "dtype": "torch.float32",
+    "torch": "2.13.0",
+    "torch_npu": null,
+    "python": "3.13.9",
+    "host": {
+      "hostname": "ats-MacBook-Pro.local",
+      "cpu_count": 12,
+      "loadavg_1m": 2.23,
+      "loadavg_5m": 1.8,
+      "loadavg_15m": 1.78
+    }
+  },
+  "memory_api": {
+    "api": {
+      "memory_allocated": false,
+      "max_memory_allocated": false,
+      "memory_reserved": false,
+      "max_memory_reserved": false,
+      "reset_peak_memory_stats": false,
+      "empty_cache": false,
+      "synchronize": false
+    },
+    "usable": false
+  },
+  "allocator_coverage": {
+    "skipped": true
+  },
+  "components": {
+    "param_bytes": 1450240,
+    "param_count": 362560,
+    "grad_bytes": 1450240,
+    "optimizer_bytes": 2900748,
+    "logits_bytes": 524288,
+    "kv_measured_bytes": 2621440,
+    "kv_analytical_bytes": 2621440,
+    "kv_entries": 10,
+    "kv_entries_expected": 10,
+    "kv_model_ok": true
+  },
+  "phase_profile": {
+    "skipped": true
+  },
+  "attention_path": {
+    "config_flag": false,
+    "package": false,
+    "func_bound": false,
+    "scaling_tested": false
+  },
+  "dtype": {
+    "requested": "torch.float32",
+    "param_dtypes": [
+      "torch.float32"
+    ],
+    "logits_dtype": "torch.float32",
+    "consistent": true
+  },
+  "contention": {
+    "host": {
+      "hostname": "ats-MacBook-Pro.local",
+      "cpu_count": 12,
+      "loadavg_1m": 2.23,
+      "loadavg_5m": 1.8,
+      "loadavg_15m": 1.78
+    },
+    "timing": {
+      "median_s": 0.0018464374988980126,
+      "mean_s": 0.0018602122998345294,
+      "min_s": 0.0017695829992590006,
+      "max_s": 0.0020902920005028136,
+      "spread_pct": 17.369068892676733,
+      "samples": 20
+    },
+    "prompt_len": 64
+  }
+}

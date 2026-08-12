@@ -79,3 +79,9 @@ test_fixtures/etd/snapshot_full_*
 
 # End-to-end KV-cache check: HF exports, module cache and eval results
 kvcache_check/
+
+# Q2 benchmarks: raw per-run outputs are large and machine-specific.
+# The E0 capability reports are small and are kept, since every later result
+# depends on what E0 established the stack can measure.
+q2_results/raw/*
+!q2_results/raw/e0_preflight_*.json
