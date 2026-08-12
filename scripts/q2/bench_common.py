@@ -492,3 +492,58 @@ def write_csv(name: str, rows, fieldnames=None) -> Path:
         writer.writeheader()
         writer.writerows(rows)
     return path
+
+
+# --------------------------------------------------------------------------------------
+# Sweep machinery -- shared by E3 (prefill), E4 (decode) and E5 (serving frontier)
+# --------------------------------------------------------------------------------------
+
+
+def is_oom(exc: BaseException) -> bool:
+    """Is this exception an out-of-memory condition rather than a real failure?
+
+    OOM is a *result* in these sweeps -- it defines the frontier -- so it must be
+    distinguished from a genuine error. torch_npu and CUDA word it differently.
+    """
+    text = f"{type(exc).__name__}: {exc}".lower()
+    return any(s in text for s in ("out of memory", "oom", "insufficient memory", "alloc failed"))
+
+
+class IncrementalWriter:
+    """Append each grid point as it completes, so a crash costs one point, not a sweep.
+
+    The machine is shared, sweeps run for tens of minutes, and another user's job can
+    destabilise the node. Writing at the end would risk losing everything.
+    """
+
+    def __init__(self, name: str) -> None:
+        RAW_DIR.mkdir(parents=True, exist_ok=True)
+        self.path = RAW_DIR / f"{name}.jsonl"
+        self.rows: list = []
+        self.path.write_text("")
+
+    def add(self, row: Dict[str, Any]) -> None:
+        self.rows.append(row)
+        with self.path.open("a") as f:
+            f.write(json.dumps(row, default=str) + "\n")
+
+
+def canary(device: str, mem: DeviceMemory, size: int = 2048) -> float:
+    """Time a fixed tiny workload, to detect drift over the course of a sweep.
+
+    Run at the start, middle and end. If the canary moves, conditions changed while
+    the sweep was running and the results need re-examining -- regardless of what
+    anyone believed about the machine being quiet.
+    """
+    a = torch.randn(size, size, device=device, dtype=torch.float32)
+    for _ in range(3):
+        a @ a
+    mem.sync()
+    start = time.perf_counter()
+    for _ in range(10):
+        a @ a
+    mem.sync()
+    elapsed = (time.perf_counter() - start) / 10
+    del a
+    mem.empty_cache()
+    return elapsed
