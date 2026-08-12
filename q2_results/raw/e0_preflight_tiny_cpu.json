@@ -1,7 +1,7 @@
 {
   "metadata": {
-    "timestamp": "2026-08-12T14:42:59",
-    "commit": "0bb4853fdf478006c1fd40f6e05a4215e2eab2b9",
+    "timestamp": "2026-08-12T15:30:27",
+    "commit": "964ff6a2c2040a29d09f8cc164c296d559b1e571",
     "branch": "Q2",
     "dirty": true,
     "profile": "tiny",
@@ -13,9 +13,9 @@
     "host": {
       "hostname": "ats-MacBook-Pro.local",
       "cpu_count": 12,
-      "loadavg_1m": 2.23,
-      "loadavg_5m": 1.8,
-      "loadavg_15m": 1.78
+      "loadavg_1m": 1.71,
+      "loadavg_5m": 1.67,
+      "loadavg_15m": 1.52
     }
   },
   "memory_api": {
@@ -66,16 +66,16 @@
     "host": {
       "hostname": "ats-MacBook-Pro.local",
       "cpu_count": 12,
-      "loadavg_1m": 2.23,
-      "loadavg_5m": 1.8,
-      "loadavg_15m": 1.78
+      "loadavg_1m": 1.71,
+      "loadavg_5m": 1.67,
+      "loadavg_15m": 1.52
     },
     "timing": {
-      "median_s": 0.0018464374988980126,
-      "mean_s": 0.0018602122998345294,
-      "min_s": 0.0017695829992590006,
-      "max_s": 0.0020902920005028136,
-      "spread_pct": 17.369068892676733,
+      "median_s": 0.0018386875017313287,
+      "mean_s": 0.0018429833005939144,
+      "min_s": 0.0017413330024282914,
+      "max_s": 0.001955374998942716,
+      "spread_pct": 11.641020908277255,
       "samples": 20
     },
     "prompt_len": 64

@@ -325,25 +325,42 @@ def check_attention_path(profile: str, device: str, mem: DeviceMemory) -> Dict[s
         del model
         return {**result, "scaling_tested": False}
 
-    # Empirical test: non-weight memory at S and 2S. Linear -> ~2x, quadratic -> ~4x.
-    base_s = 512 if profile == "tiny" else 2048
+    # Empirical test: non-weight memory as S doubles. Linear -> ~2x, quadratic -> ~4x.
+    # Checked over two doublings, not one: a chunked attention implementation can be
+    # linear at short S and turn quadratic past some threshold, and the grid runs to 16k.
+    lengths = (256, 512, 1024) if profile == "tiny" else (2048, 4096, 8192)
     weights = param_bytes(model)
     readings = {}
-    for seq in (base_s, 2 * base_s):
+    for seq in lengths:
         ids = torch.randint(0, PROFILES[profile]["vocab_size"], (1, seq), device=device)
         mem.empty_cache()
         mem.reset_peak()
-        with torch.no_grad():
-            model(ids, last_logits_only=True)
-        mem.sync()
-        readings[seq] = mem.peak_allocated() - weights
-        del ids
+        try:
+            with torch.no_grad():
+                model(ids, last_logits_only=True)
+            mem.sync()
+            readings[seq] = mem.peak_allocated() - weights
+        except RuntimeError as exc:  # OOM at this length is itself informative
+            print(f"  S={seq}: failed ({type(exc).__name__}) — treating as the frontier")
+            break
+        finally:
+            del ids
+            mem.empty_cache()
 
-    small, large = readings[base_s], readings[2 * base_s]
-    ratio = large / small if small > 0 else 0.0
-    print(f"\n  non-weight peak at S={base_s:<6d}: {mb(small):9.1f} MB")
-    print(f"  non-weight peak at S={2 * base_s:<6d}: {mb(large):9.1f} MB")
-    print(f"  ratio for 2x sequence length : {ratio:.2f}")
+    ratios = []
+    prev_seq = None
+    for seq in sorted(readings):
+        print(f"  non-weight peak at S={seq:<6d}: {mb(readings[seq]):9.1f} MB", end="")
+        if prev_seq is not None and readings[prev_seq] > 0:
+            r = readings[seq] / readings[prev_seq]
+            ratios.append(r)
+            print(f"   ratio vs S={prev_seq}: {r:.2f}")
+        else:
+            print()
+        prev_seq = seq
+
+    ratio = max(ratios) if ratios else 0.0
+    print(f"\n  worst doubling ratio: {ratio:.2f}   (linear ~2.0, quadratic ~4.0)")
     quadratic = ratio > 3.0
     if quadratic:
         print("  => QUADRATIC. The B*h*S^2 score matrix is being materialised.")
@@ -359,7 +376,7 @@ def check_attention_path(profile: str, device: str, mem: DeviceMemory) -> Dict[s
         **result,
         "scaling_tested": True,
         "nonweight_bytes": {str(k): v for k, v in readings.items()},
-        "ratio_2x_seq": ratio,
+        "worst_doubling_ratio": ratio,
         "quadratic": quadratic,
     }
 
