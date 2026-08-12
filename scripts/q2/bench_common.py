@@ -370,8 +370,43 @@ def _git(*args: str) -> str:
         return "unknown"
 
 
+def cpu_affinity() -> Dict[str, Any]:
+    """Which CPUs this process may run on, and whether it is pinned.
+
+    E0 established that CPU pinning is not optional here. Unpinned, decode latency
+    stepped between roughly 50, 54 and 61 ms within a single process -- 22% drift, far
+    larger than the effects the sweeps must resolve. Pinned to one NUMA node the same
+    measurement holds to 0.5%. Every result therefore records its affinity, so an
+    unpinned run cannot silently contaminate the results.
+    """
+    try:
+        cpus = sorted(os.sched_getaffinity(0))
+    except AttributeError:  # not Linux
+        return dict(supported=False, pinned=None, n_cpus=None)
+    total = os.cpu_count() or len(cpus)
+    return dict(
+        supported=True,
+        pinned=len(cpus) < total,
+        n_cpus=len(cpus),
+        total_cpus=total,
+        range=f"{cpus[0]}-{cpus[-1]}" if cpus else "",
+    )
+
+
+def warn_if_unpinned() -> None:
+    """Print a loud warning if the process is free to migrate across cores."""
+    aff = cpu_affinity()
+    if aff.get("supported") and not aff.get("pinned"):
+        print(
+            "\n  *** WARNING: process is NOT pinned to a CPU set. E0 measured up to 22% latency\n"
+            "  *** drift from core migration when unpinned, against 0.5% when pinned. Re-run as:\n"
+            "  ***     taskset -c 0-47 python <script> ...\n"
+            "  *** Memory results are unaffected; latency results will not be trustworthy.\n"
+        )
+
+
 def host_state() -> Dict[str, Any]:
-    """Host load, recorded with every result because the machine is shared."""
+    """Host load and CPU affinity, recorded with every result -- the machine is shared."""
     try:
         load1, load5, load15 = os.getloadavg()
     except Exception:  # noqa: BLE001
@@ -382,6 +417,7 @@ def host_state() -> Dict[str, Any]:
         loadavg_1m=round(load1, 2),
         loadavg_5m=round(load5, 2),
         loadavg_15m=round(load15, 2),
+        affinity=cpu_affinity(),
     )
 
 

@@ -47,6 +47,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from scripts.q2.bench_common import (  # noqa: E402
     DeviceMemory,
+    warn_if_unpinned,
     PROFILES,
     analytical_kv_bytes,
     build_model,
@@ -488,6 +489,7 @@ def main() -> int:
     print(f"E0 PREFLIGHT   profile={args.profile}  device={device}  dtype={PROFILES[args.profile]['dtype']}")
     print(f"torch {meta['torch']}  torch_npu {meta['torch_npu']}  commit {meta['commit'][:8]}")
     print("=" * 78)
+    warn_if_unpinned()
 
     results: Dict[str, Any] = {"metadata": meta}
     checks = (

@@ -1,0 +1,34 @@
+{
+  "metadata": {
+    "timestamp": "2026-08-12T15:46:06",
+    "commit": "54d5c41f0b5a4e6534b65689ca00486f44f49676",
+    "branch": "Q2",
+    "dirty": true,
+    "profile": "tiny",
+    "device": "cpu",
+    "dtype": "torch.float32",
+    "torch": "2.13.0",
+    "torch_npu": null,
+    "python": "3.13.9",
+    "host": {
+      "hostname": "ats-MacBook-Pro.local",
+      "cpu_count": 12,
+      "loadavg_1m": 1.56,
+      "loadavg_5m": 1.69,
+      "loadavg_15m": 1.66,
+      "affinity": {
+        "supported": false,
+        "pinned": null,
+        "n_cpus": null
+      }
+    }
+  },
+  "dtype": {
+    "requested": "torch.float32",
+    "param_dtypes": [
+      "torch.float32"
+    ],
+    "logits_dtype": "torch.float32",
+    "consistent": true
+  }
+}
