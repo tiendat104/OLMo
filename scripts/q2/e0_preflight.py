@@ -398,7 +398,9 @@ def check_dtype(profile: str, device: str) -> Dict[str, Any]:
     return dict(requested=str(want), param_dtypes=sorted(p_dtypes), logits_dtype=str(out_dtype), consistent=ok)
 
 
-def check_contention_sensitivity(profile: str, device: str, mem: DeviceMemory) -> Dict[str, Any]:
+def check_contention_sensitivity(
+    profile: str, device: str, mem: DeviceMemory, repeats: int = 1, warmup: int = 20
+) -> Dict[str, Any]:
     """Time the most dispatch-bound point in the plan, and record host load with it.
 
     The machine is shared. Run this once while the other user's job is up and once when
@@ -425,18 +427,39 @@ def check_contention_sensitivity(profile: str, device: str, mem: DeviceMemory) -
         with torch.no_grad():
             model(step_in, past_key_values=cache, use_cache=False, last_logits_only=True)
 
-    timing = time_repeated(one_step, mem, warmup=5, measured=20)
-    print(f"\n  decode step: median {timing.median_s * 1000:.2f} ms   "
-          f"min {timing.min_s * 1000:.2f}   max {timing.max_s * 1000:.2f}   spread {timing.spread_pct:.1f}%")
-    if timing.spread_pct > 25:
-        print("  WARNING: spread above 25% -- the host is likely contended right now.")
-    print("\n  Re-run this when the machine is quiet; the ratio of the two medians is the")
-    print("  contention sensitivity, and decides whether the scheduling rules in section 6.1")
-    print("  are mandatory or merely precautionary.")
+    # Repeated blocks within ONE process: separates run-to-run drift (which would show
+    # up here) from cross-process differences (which would not).
+    blocks = []
+    for i in range(repeats):
+        timing = time_repeated(one_step, mem, warmup=warmup, measured=20)
+        blocks.append(timing)
+        print(f"  block {i + 1}/{repeats}: median {timing.median_s * 1000:6.2f} ms   "
+              f"min {timing.min_s * 1000:6.2f}   max {timing.max_s * 1000:6.2f}   "
+              f"spread {timing.spread_pct:5.1f}%")
+        if timing.spread_pct > 25:
+            print("           WARNING: spread above 25% -- host likely contended.")
+
+    medians = sorted(t.median_s for t in blocks)
+    drift = 100.0 * (medians[-1] - medians[0]) / medians[0] if medians[0] > 0 else 0.0
+    if repeats > 1:
+        print(f"\n  within-process drift across {repeats} blocks: {drift:.1f}%")
+        print("  This is the floor on how precisely any latency ratio can be resolved.")
+        print("  If it is small, cross-run differences are a prologue/session effect, not noise.")
+
+    print("\n  Compare medians across runs (loaded vs quiet, and run to run). All k in the real")
+    print("  sweeps must be measured inside ONE process and interleaved, so session drift is")
+    print("  common-mode and the k-ratios survive even if absolutes wander.")
 
     del model
     mem.empty_cache()
-    return dict(host=host, timing=timing.as_dict(), prompt_len=prompt_len)
+    return dict(
+        host=host,
+        timing=blocks[0].as_dict(),
+        blocks=[t.as_dict() for t in blocks],
+        within_process_drift_pct=drift,
+        prompt_len=prompt_len,
+        warmup=warmup,
+    )
 
 
 # --------------------------------------------------------------------------------------
@@ -447,6 +470,14 @@ def main() -> int:
     ap.add_argument("--profile", choices=sorted(PROFILES), default="tiny")
     ap.add_argument("--device", default=None)
     ap.add_argument("--tag", default="", help="suffix for the result filename, e.g. 'loaded' or 'quiet'")
+    ap.add_argument(
+        "--only",
+        default=None,
+        help="run a single check (e.g. 'contention') with no prologue, so its measurement "
+        "is not influenced by work the other checks did first",
+    )
+    ap.add_argument("--repeats", type=int, default=1, help="timing blocks for the contention check")
+    ap.add_argument("--warmup", type=int, default=20, help="warmup iterations before each timing block")
     args = ap.parse_args()
 
     device = resolve_device(args.device)
@@ -466,8 +497,18 @@ def main() -> int:
         ("phase_profile", lambda: check_phase_profile(args.profile, device, mem)),
         ("attention_path", lambda: check_attention_path(args.profile, device, mem)),
         ("dtype", lambda: check_dtype(args.profile, device)),
-        ("contention", lambda: check_contention_sensitivity(args.profile, device, mem)),
+        (
+            "contention",
+            lambda: check_contention_sensitivity(
+                args.profile, device, mem, repeats=args.repeats, warmup=args.warmup
+            ),
+        ),
     )
+    if args.only:
+        checks = tuple(c for c in checks if c[0] == args.only)
+        if not checks:
+            print(f"unknown check {args.only!r}")
+            return 2
     for name, fn in checks:
         try:
             results[name] = fn()
@@ -478,7 +519,11 @@ def main() -> int:
             traceback.print_exc(limit=4)
             results[name] = dict(failed=True, error=f"{type(exc).__name__}: {exc}")
 
-    name = f"e0_preflight_{args.profile}_{device.replace(':', '')}" + (f"_{args.tag}" if args.tag else "")
+    name = f"e0_preflight_{args.profile}_{device.replace(':', '')}"
+    if args.only:
+        name += f"_only-{args.only}"
+    if args.tag:
+        name += f"_{args.tag}"
     path = write_result(name, results)
 
     section("Summary")
