@@ -184,12 +184,17 @@ def make_config(profile: str, device: str, arm: str, k: int = 1, **overrides):
     return cfg
 
 
-def build_model(profile: str, device: str, arm: str, k: int = 1, **overrides):
-    """Instantiate with real random weights, in the profile's dtype, in eval mode."""
+def build_model(profile: str, device: str, arm: str, k: int = 1, init_params: bool = True, **overrides):
+    """Instantiate on the target device, in the profile's dtype, in eval mode.
+
+    ``init_params=False`` allocates the parameters without running the random
+    initialiser. Byte counts and shapes are identical, so it is the right choice when
+    only the sizes matter (E1) and saves a lot of time at 3.4 B parameters.
+    """
     from olmo.model import OLMo
 
     cfg = make_config(profile, device, arm, k, **overrides)
-    model = OLMo(cfg, init_params=True).to(PROFILES[profile]["dtype"]).eval()
+    model = OLMo(cfg, init_params=init_params).to(PROFILES[profile]["dtype"]).eval()
     # Guard against the `init_device: meta` trap: meta tensors report zero bytes and
     # every memory number downstream would be silently meaningless.
     assert param_bytes(model) > 0, "model has no materialised parameters"
@@ -470,3 +475,20 @@ def gb(num_bytes: float) -> float:
 
 def mb(num_bytes: float) -> float:
     return num_bytes / (1024**2)
+
+
+def write_csv(name: str, rows, fieldnames=None) -> Path:
+    """Aggregated results, committed to the branch so they reach the Mac by git pull."""
+    import csv
+
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    path = RESULTS_DIR / f"{name}.csv"
+    rows = list(rows)
+    if not rows:
+        return path
+    fieldnames = fieldnames or list(rows[0].keys())
+    with path.open("w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+    return path
