@@ -1,4 +1,6 @@
 import logging
+import os
+import sys
 from dataclasses import fields
 from typing import Callable, List, Optional, Tuple, Union
 
@@ -9,11 +11,20 @@ from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.models.auto import AutoModelForCausalLM
 
 from olmo.config import ActivationCheckpointingStrategy, ModelConfig
-from olmo.model import OLMo
+from olmo.model import OLMo, kv_cache_is_populated
 
 from .configuration_olmo import OLMoConfig
 
 log = logging.getLogger(__name__)
+
+_KV_DEBUG_CALLS = [0]
+_KV_DEBUG_MAX = int(os.environ.get("ETD_KV_DEBUG_MAX", "40"))
+
+
+def _kv_debug_budget() -> bool:
+    """Allow only the first N debug lines, so a long evaluation is not flooded."""
+    _KV_DEBUG_CALLS[0] += 1
+    return _KV_DEBUG_CALLS[0] <= _KV_DEBUG_MAX
 
 
 def create_model_config_from_pretrained_config(config: OLMoConfig):
@@ -100,8 +111,30 @@ class OLMoForCausalLM(PreTrainedModel, GenerationMixin):
         if use_cache is None:
             use_cache = self.config.use_cache
 
-        # ETD with k>1 is incompatible with KV cache; fall back to recomputing attention each step.
-        if use_cache and getattr(self.config, "etd_num_iterations", 1) > 1:
+        # Set ETD_KV_DEBUG=1 to trace whether caching actually engages inside a harness
+        # that loads this file via trust_remote_code (olmes, lm-eval). Bounded so it
+        # cannot flood a long run; inert unless the variable is set.
+        if os.environ.get("ETD_KV_DEBUG") and _kv_debug_budget():
+            seq = tuple(input_ids.shape) if input_ids is not None else None
+            print(
+                f"[ETD_KV_DEBUG] input_ids={seq} use_cache={use_cache} "
+                f"past={type(past_key_values).__name__ if past_key_values is not None else None} "
+                f"populated={kv_cache_is_populated(past_key_values)} "
+                f"etd_k={getattr(self.config, 'etd_num_iterations', 1)} "
+                f"etd_kv_cache={getattr(self.config, 'etd_kv_cache', False)}",
+                file=sys.stderr,
+                flush=True,
+            )
+
+        # ETD with k>1 can only use a KV cache when the opt-in switch is on, because the
+        # cache must hold one entry per *executed* layer rather than one per block.
+        # Without it, fall back to recomputing attention each step -- the historical
+        # behaviour, preserved exactly so evaluation of existing checkpoints is unchanged.
+        if (
+            use_cache
+            and getattr(self.config, "etd_num_iterations", 1) > 1
+            and not getattr(self.config, "etd_kv_cache", False)
+        ):
             use_cache = False
             past_key_values = None  # DynamicCache objects from newer transformers must also be cleared
 
@@ -158,11 +191,16 @@ class OLMoForCausalLM(PreTrainedModel, GenerationMixin):
         # Modern transformers pre-seeds `past_key_values` with an empty DynamicCache
         # (truthy, and len() == num_layers) before the first forward pass even when
         # no real caching ever happens, so truthiness alone can't signal "do we have
-        # a real cache". ETD with k>1 never produces one (see forward()), so it must
-        # always see the full sequence -- otherwise generation degenerates to feeding
-        # the model a single token per step with no context at all.
+        # a real cache" -- hence the explicit emptiness check.
+        #
+        # Trim to the last token only when a populated cache exists AND this
+        # configuration is actually able to cache. With k>1 and the switch off, no cache
+        # is ever produced (see forward()), so the model must keep seeing the full
+        # sequence -- otherwise generation degenerates to one token per step with no
+        # context at all.
         etd_num_iterations = getattr(self.config, "etd_num_iterations", 1)
-        if past_key_values and etd_num_iterations <= 1:
+        caching_possible = etd_num_iterations <= 1 or getattr(self.config, "etd_kv_cache", False)
+        if caching_possible and kv_cache_is_populated(past_key_values):
             # This is because we want the model to only process the last generated token.
             input_ids = input_ids[:, -1:]
         model_inputs = {"input_ids": input_ids, "past_key_values": past_key_values}

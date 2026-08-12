@@ -16,8 +16,12 @@ if [ -z "$STEP" ] || [ -z "$K" ]; then
     exit 1
 fi
 
-CHECKPOINT_DIR=${RUN_DIR}/step${STEP}-unsharded
-DEST_DIR=${RUN_DIR}/step${STEP}-hf
+# SRC_ROOT lets the source checkpoint live in another checkout (e.g. converting the
+# replication run's checkpoint from a separate working copy). DEST_DIR lets the output
+# go somewhere other than next to it, so the original -hf folder is never overwritten.
+SRC_ROOT=${SRC_ROOT:-.}
+CHECKPOINT_DIR=${SRC_ROOT}/${RUN_DIR}/step${STEP}-unsharded
+DEST_DIR=${DEST_DIR:-${RUN_DIR}/step${STEP}-hf}
 
 # Sanity checks
 if [ ! -d "${CHECKPOINT_DIR}" ]; then

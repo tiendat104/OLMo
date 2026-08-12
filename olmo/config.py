@@ -287,6 +287,22 @@ class ModelConfig(BaseConfig):
     to the standard forward pass. Must be >= 1.
     """
 
+    etd_kv_cache: bool = False
+    """
+    Opt-in KV caching for ETD with ``etd_num_iterations > 1``.
+
+    Each iteration of the thinking block attends over a *different* hidden state, so it
+    produces different keys and values; sharing one cache slot across iterations is not
+    an approximation but simply wrong. Correct caching therefore stores one entry per
+    **executed** layer (``etd_encoder_layers + etd_thinking_layers*k + n_decoder``)
+    rather than one per distinct block, and KV memory grows with effective depth.
+
+    Defaults to ``False``, which reproduces the historical behaviour exactly: with k>1,
+    requesting a cache raises, and generation falls back to recomputing the full
+    sequence at every step. Leaving it off guarantees that evaluation of existing
+    checkpoints is bit-for-bit unchanged.
+    """
+
     mlp_ratio: int = 4
     """
     The ratio of the inner MLP dimensionality to ``d_model``.
