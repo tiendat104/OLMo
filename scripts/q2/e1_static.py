@@ -156,7 +156,7 @@ def main() -> int:
 
     payload = dict(metadata=meta, rows=rows, savings=savings)
     raw = write_result(f"e1_static_{args.profile}", payload)
-    csv_path = write_csv(f"e1_static_{args.profile}", rows)
+    csv_path = write_csv(f"e1_static_{args.profile}", rows, meta=meta)
     print(f"\n  raw: {raw}")
     print(f"  csv: {csv_path}")
     return 0

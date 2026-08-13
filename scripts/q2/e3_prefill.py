@@ -217,7 +217,7 @@ def main() -> int:
                 f"{ratio(r['kv_bytes'], base['kv_bytes'])} {r['depth'] / base['depth']:>6.2f}"
             )
 
-    csv_path = write_csv(run_name, rows)
+    csv_path = write_csv(run_name, rows, meta=meta)
     print(f"\n  raw: {writer.path}")
     print(f"  csv: {csv_path}")
     return 0

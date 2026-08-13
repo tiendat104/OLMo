@@ -248,7 +248,7 @@ def main() -> int:
         print("  WARNING: conditions changed while the sweep ran. Re-examine before trusting ratios.")
     print(f"points measured: {done}/{total_points}   elapsed: {(time.time() - t0) / 60:.1f} min")
 
-    csv_path = write_csv(f"e4_decode_{args.profile}", rows)
+    csv_path = write_csv(f"e4_decode_{args.profile}", rows, meta=meta)
     print(f"  raw: {writer.path}")
     print(f"  csv: {csv_path}")
     return 0

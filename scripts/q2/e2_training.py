@@ -296,7 +296,7 @@ def main() -> int:
                   ("step_start", "after_forward", "after_loss", "after_backward", "after_update"))
                   + f" {gb(r['peak_bytes']):>9.2f}")
 
-    csv_path = write_csv(run_name, [{k: v for k, v in r.items() if k != "phases"} for r in rows])
+    csv_path = write_csv(run_name, [{k: v for k, v in r.items() if k != "phases"} for r in rows], meta=meta)
     print(f"\n  raw: {writer.path}")
     print(f"  csv: {csv_path}")
     return 0

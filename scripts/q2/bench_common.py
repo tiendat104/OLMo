@@ -486,9 +486,16 @@ def mb(num_bytes: float) -> float:
     return num_bytes / (1024**2)
 
 
-def write_csv(name: str, rows, fieldnames=None) -> Path:
-    """Aggregated results, committed to the branch so they reach the Mac by git pull."""
+def write_csv(name: str, rows, fieldnames=None, meta=None) -> Path:
+    """Aggregated results, committed to the branch so they reach the Mac by git pull.
+
+    A `<name>.meta.json` sidecar is written alongside. The CSV carries measurements
+    only; without the sidecar a number in the report cannot be traced back to the
+    code, device and machine state that produced it, which is the point of keeping
+    the file at all.
+    """
     import csv
+    import json
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     path = RESULTS_DIR / f"{name}.csv"
@@ -500,6 +507,8 @@ def write_csv(name: str, rows, fieldnames=None) -> Path:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
+    if meta is not None:
+        (RESULTS_DIR / f"{name}.meta.json").write_text(json.dumps(meta, indent=2, default=str) + "\n")
     return path
 
 
