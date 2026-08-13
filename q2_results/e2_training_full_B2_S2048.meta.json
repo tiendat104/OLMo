@@ -1,0 +1,26 @@
+{
+  "timestamp": "2026-08-14T02:52:49",
+  "commit": "516952e7b2ea202e85fa893b1fa454b5550dfcdf",
+  "branch": "Q2",
+  "dirty": true,
+  "profile": "full",
+  "device": "npu:0",
+  "dtype": "torch.bfloat16",
+  "torch": "2.10.0+cpu",
+  "torch_npu": "2.10.0",
+  "python": "3.12.13",
+  "host": {
+    "hostname": "92_102",
+    "cpu_count": 192,
+    "loadavg_1m": 11.79,
+    "loadavg_5m": 12.3,
+    "loadavg_15m": 12.16,
+    "affinity": {
+      "supported": true,
+      "pinned": true,
+      "n_cpus": 48,
+      "total_cpus": 192,
+      "range": "0-47"
+    }
+  }
+}

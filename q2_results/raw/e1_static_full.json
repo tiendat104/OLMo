@@ -1,0 +1,250 @@
+{
+  "metadata": {
+    "timestamp": "2026-08-14T02:52:21",
+    "commit": "516952e7b2ea202e85fa893b1fa454b5550dfcdf",
+    "branch": "Q2",
+    "dirty": true,
+    "profile": "full",
+    "device": "npu:0",
+    "dtype": "torch.bfloat16",
+    "torch": "2.10.0+cpu",
+    "torch_npu": "2.10.0",
+    "python": "3.12.13",
+    "host": {
+      "hostname": "92_102",
+      "cpu_count": 192,
+      "loadavg_1m": 12.77,
+      "loadavg_5m": 12.5,
+      "loadavg_15m": 12.22,
+      "affinity": {
+        "supported": true,
+        "pinned": true,
+        "n_cpus": 48,
+        "total_cpus": 192,
+        "range": "0-47"
+      }
+    }
+  },
+  "rows": [
+    {
+      "arm": "baseline",
+      "k": "-",
+      "stored_layers": 16,
+      "executed_layers": 16,
+      "params_total": 1484916736,
+      "params_embedding": 679477248,
+      "params_layers": 805439488,
+      "params_per_layer": 50339968,
+      "weight_bytes": 2969833472,
+      "kv_bytes_per_token": 131072,
+      "flops_ratio": 1.0,
+      "params_ratio": 1.0
+    },
+    {
+      "arm": "etd",
+      "k": 1,
+      "stored_layers": 16,
+      "executed_layers": 16,
+      "params_total": 1484916736,
+      "params_embedding": 679477248,
+      "params_layers": 805439488,
+      "params_per_layer": 50339968,
+      "weight_bytes": 2969833472,
+      "kv_bytes_per_token": 131072,
+      "flops_ratio": 1.0,
+      "params_ratio": 1.0
+    },
+    {
+      "arm": "dense",
+      "k": "-",
+      "stored_layers": 16,
+      "executed_layers": 16,
+      "params_total": 1484916736,
+      "params_embedding": 679477248,
+      "params_layers": 805439488,
+      "params_per_layer": 50339968,
+      "weight_bytes": 2969833472,
+      "kv_bytes_per_token": 131072,
+      "flops_ratio": 1.0,
+      "params_ratio": 1.0
+    },
+    {
+      "arm": "etd",
+      "k": 2,
+      "stored_layers": 16,
+      "executed_layers": 20,
+      "params_total": 1484916736,
+      "params_embedding": 679477248,
+      "params_layers": 805439488,
+      "params_per_layer": 50339968,
+      "weight_bytes": 2969833472,
+      "kv_bytes_per_token": 163840,
+      "flops_ratio": 1.25,
+      "params_ratio": 1.0
+    },
+    {
+      "arm": "dense",
+      "k": "-",
+      "stored_layers": 20,
+      "executed_layers": 20,
+      "params_total": 1753384960,
+      "params_embedding": 746586112,
+      "params_layers": 1006798848,
+      "params_per_layer": 50339942,
+      "weight_bytes": 3506769920,
+      "kv_bytes_per_token": 163840,
+      "flops_ratio": 1.25,
+      "params_ratio": 1.1808
+    },
+    {
+      "arm": "etd",
+      "k": 3,
+      "stored_layers": 16,
+      "executed_layers": 24,
+      "params_total": 1484916736,
+      "params_embedding": 679477248,
+      "params_layers": 805439488,
+      "params_per_layer": 50339968,
+      "weight_bytes": 2969833472,
+      "kv_bytes_per_token": 196608,
+      "flops_ratio": 1.5,
+      "params_ratio": 1.0
+    },
+    {
+      "arm": "dense",
+      "k": "-",
+      "stored_layers": 24,
+      "executed_layers": 24,
+      "params_total": 2021853184,
+      "params_embedding": 813694976,
+      "params_layers": 1208158208,
+      "params_per_layer": 50339925,
+      "weight_bytes": 4043706368,
+      "kv_bytes_per_token": 196608,
+      "flops_ratio": 1.5,
+      "params_ratio": 1.3616
+    },
+    {
+      "arm": "etd",
+      "k": 4,
+      "stored_layers": 16,
+      "executed_layers": 28,
+      "params_total": 1484916736,
+      "params_embedding": 679477248,
+      "params_layers": 805439488,
+      "params_per_layer": 50339968,
+      "weight_bytes": 2969833472,
+      "kv_bytes_per_token": 229376,
+      "flops_ratio": 1.75,
+      "params_ratio": 1.0
+    },
+    {
+      "arm": "dense",
+      "k": "-",
+      "stored_layers": 28,
+      "executed_layers": 28,
+      "params_total": 2290321408,
+      "params_embedding": 880803840,
+      "params_layers": 1409517568,
+      "params_per_layer": 50339913,
+      "weight_bytes": 4580642816,
+      "kv_bytes_per_token": 229376,
+      "flops_ratio": 1.75,
+      "params_ratio": 1.5424
+    },
+    {
+      "arm": "etd",
+      "k": 5,
+      "stored_layers": 16,
+      "executed_layers": 32,
+      "params_total": 1484916736,
+      "params_embedding": 679477248,
+      "params_layers": 805439488,
+      "params_per_layer": 50339968,
+      "weight_bytes": 2969833472,
+      "kv_bytes_per_token": 262144,
+      "flops_ratio": 2.0,
+      "params_ratio": 1.0
+    },
+    {
+      "arm": "dense",
+      "k": "-",
+      "stored_layers": 32,
+      "executed_layers": 32,
+      "params_total": 2558789632,
+      "params_embedding": 947912704,
+      "params_layers": 1610876928,
+      "params_per_layer": 50339904,
+      "weight_bytes": 5117579264,
+      "kv_bytes_per_token": 262144,
+      "flops_ratio": 2.0,
+      "params_ratio": 1.7232
+    },
+    {
+      "arm": "etd",
+      "k": 8,
+      "stored_layers": 16,
+      "executed_layers": 44,
+      "params_total": 1484916736,
+      "params_embedding": 679477248,
+      "params_layers": 805439488,
+      "params_per_layer": 50339968,
+      "weight_bytes": 2969833472,
+      "kv_bytes_per_token": 360448,
+      "flops_ratio": 2.75,
+      "params_ratio": 1.0
+    },
+    {
+      "arm": "dense",
+      "k": "-",
+      "stored_layers": 44,
+      "executed_layers": 44,
+      "params_total": 3364194304,
+      "params_embedding": 1149239296,
+      "params_layers": 2214955008,
+      "params_per_layer": 50339886,
+      "weight_bytes": 6728388608,
+      "kv_bytes_per_token": 360448,
+      "flops_ratio": 2.75,
+      "params_ratio": 2.2656
+    }
+  ],
+  "savings": [
+    {
+      "k": 1,
+      "depth": 16,
+      "saved_bytes": 0,
+      "saved_pct": 0.0
+    },
+    {
+      "k": 2,
+      "depth": 20,
+      "saved_bytes": 536936448,
+      "saved_pct": 15.31
+    },
+    {
+      "k": 3,
+      "depth": 24,
+      "saved_bytes": 1073872896,
+      "saved_pct": 26.56
+    },
+    {
+      "k": 4,
+      "depth": 28,
+      "saved_bytes": 1610809344,
+      "saved_pct": 35.17
+    },
+    {
+      "k": 5,
+      "depth": 32,
+      "saved_bytes": 2147745792,
+      "saved_pct": 41.97
+    },
+    {
+      "k": 8,
+      "depth": 44,
+      "saved_bytes": 3758555136,
+      "saved_pct": 55.86
+    }
+  ]
+}
