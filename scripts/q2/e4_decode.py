@@ -157,6 +157,14 @@ def main() -> int:
     warmup = args.warmup if args.warmup is not None else d["warmup"]
     meta = run_metadata(args.profile, device)
 
+    # A restricted run measures a different thing from the full sweep and must not
+    # land on top of it: the sweep backs the capacity table in the report, and
+    # overwriting 190 rows with a handful would destroy that evidence silently.
+    # A single operating point is named for it; a genuine sweep keeps the plain name.
+    run_name = f"e4_decode_{args.profile}"
+    if len(batches) == 1 and len(seqs) == 1:
+        run_name += f"_B{batches[0]}_S{seqs[0]}"
+
     print("=" * 96)
     print(f"E4 DECODE SWEEP   profile={args.profile}  device={device}  dtype={meta['dtype']}")
     print(f"arms={arms}  k={ks}  B={batches}  S={seqs}  G={gen}  warmup={warmup}")
@@ -164,7 +172,7 @@ def main() -> int:
     print("=" * 96)
     warn_if_unpinned()
 
-    writer = IncrementalWriter(f"e4_decode_{args.profile}")
+    writer = IncrementalWriter(run_name)
     rows: List[Dict[str, Any]] = []
     canaries: List[Dict[str, Any]] = []
 
@@ -248,7 +256,7 @@ def main() -> int:
         print("  WARNING: conditions changed while the sweep ran. Re-examine before trusting ratios.")
     print(f"points measured: {done}/{total_points}   elapsed: {(time.time() - t0) / 60:.1f} min")
 
-    csv_path = write_csv(f"e4_decode_{args.profile}", rows, meta=meta)
+    csv_path = write_csv(run_name, rows, meta=meta)
     print(f"  raw: {writer.path}")
     print(f"  csv: {csv_path}")
     return 0
