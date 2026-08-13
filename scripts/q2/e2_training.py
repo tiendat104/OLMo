@@ -140,6 +140,37 @@ def training_point(
     phase_peak = mem.peak_allocated()
     del out, loss
 
+    # Phase timing: forward, backward and optimizer separately, with a device sync
+    # between phases. The syncs prevent any overlap between phases, so the three
+    # parts need not sum exactly to the whole-step time below -- they are for
+    # attribution, not a replacement for it. Forward includes the loss.
+    #
+    # Why this exists: the whole-step fit has a fixed cost (intercept) that cannot
+    # be attributed from the fit alone. The optimizer phase is measured directly
+    # here and should be constant in k; whatever fixed cost remains inside
+    # forward+backward belongs to the depth-independent ends of the network
+    # (embedding, final norm, vocabulary projection, loss).
+    phase_samples = {"forward_ms": [], "backward_ms": [], "optimizer_ms": []}
+    for _ in range(max(5, measured // 2)):
+        mem.sync()
+        t0 = time.perf_counter()
+        logits = model(ids).logits
+        loss = logits.float().mean()
+        mem.sync()
+        t1 = time.perf_counter()
+        loss.backward()
+        mem.sync()
+        t2 = time.perf_counter()
+        opt.step()
+        opt.zero_grad(set_to_none=True)
+        mem.sync()
+        t3 = time.perf_counter()
+        phase_samples["forward_ms"].append(1000.0 * (t1 - t0))
+        phase_samples["backward_ms"].append(1000.0 * (t2 - t1))
+        phase_samples["optimizer_ms"].append(1000.0 * (t3 - t2))
+        del logits, loss
+    phase_ms = {name: sorted(v)[len(v) // 2] for name, v in phase_samples.items()}
+
     # Timed block, with the peak counter running across whole steps.
     mem.reset_peak()
     mem.sync()
@@ -158,6 +189,7 @@ def training_point(
         peak_bytes=max(peak, phase_peak),
         phases=phases,
         steps=measured,
+        **phase_ms,
         **components,
     )
 
@@ -200,8 +232,8 @@ def main() -> int:
     order = list(ks)
     random.Random(args.seed).shuffle(order)
     print(f"  measurement order: {order}\n")
-    print(f"  {'k':>2} {'D':>3} {'step ms':>10} {'peak GB':>8} {'weights':>8} {'grads':>7} "
-          f"{'optim':>7} {'logits':>7} {'residual':>9}")
+    print(f"  {'k':>2} {'D':>3} {'step ms':>10} {'fwd ms':>8} {'bwd ms':>8} {'opt ms':>8} "
+          f"{'peak GB':>8} {'residual':>9}")
 
     for k in order:
         depth = effective_depth(args.profile, "etd", k)
@@ -226,9 +258,9 @@ def main() -> int:
         writer.add(row)
         rows.append(row)
         print(
-            f"  {k:>2} {depth:>3} {r['step_time_ms']:>10.1f} {gb(r['peak_bytes']):>8.2f} "
-            f"{gb(r['weight_bytes']):>8.2f} {gb(r['grad_bytes']):>7.2f} {gb(r['optimizer_bytes']):>7.2f} "
-            f"{gb(r['logits_bytes']):>7.2f} {gb(residual):>9.2f}"
+            f"  {k:>2} {depth:>3} {r['step_time_ms']:>10.1f} {r['forward_ms']:>8.1f} "
+            f"{r['backward_ms']:>8.1f} {r['optimizer_ms']:>8.1f} "
+            f"{gb(r['peak_bytes']):>8.2f} {gb(residual):>9.2f}"
         )
         del model
         mem.empty_cache()
