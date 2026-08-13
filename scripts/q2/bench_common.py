@@ -528,6 +528,14 @@ class IncrementalWriter:
     def __init__(self, name: str) -> None:
         RAW_DIR.mkdir(parents=True, exist_ok=True)
         self.path = RAW_DIR / f"{name}.jsonl"
+        # Result files are evidence: a re-run must not silently destroy a previous
+        # run's data. An existing file is moved aside with a numeric suffix.
+        if self.path.exists() and self.path.stat().st_size > 0:
+            n = 1
+            while (backup := RAW_DIR / f"{name}.prev{n}.jsonl").exists():
+                n += 1
+            self.path.rename(backup)
+            print(f"  [note] existing {self.path.name} moved to {backup.name}")
         self.rows: list = []
         self.path.write_text("")
 

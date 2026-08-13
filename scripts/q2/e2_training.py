@@ -224,7 +224,8 @@ def main() -> int:
     print("=" * 96)
     warn_if_unpinned()
 
-    writer = IncrementalWriter(f"e2_training_{args.profile}")
+    run_name = f"e2_training_{args.profile}_B{batch}_S{seq}"
+    writer = IncrementalWriter(run_name)
     rows: List[Dict[str, Any]] = []
     c_start = canary(device, mem)
     print(f"  [canary start] {c_start * 1000:.3f} ms")
@@ -295,7 +296,7 @@ def main() -> int:
                   ("step_start", "after_forward", "after_loss", "after_backward", "after_update"))
                   + f" {gb(r['peak_bytes']):>9.2f}")
 
-    csv_path = write_csv(f"e2_training_{args.profile}", [{k: v for k, v in r.items() if k != "phases"} for r in rows])
+    csv_path = write_csv(run_name, [{k: v for k, v in r.items() if k != "phases"} for r in rows])
     print(f"\n  raw: {writer.path}")
     print(f"  csv: {csv_path}")
     return 0

@@ -142,7 +142,8 @@ def main() -> int:
     print("=" * 92)
     warn_if_unpinned()
 
-    writer = IncrementalWriter(f"e3_prefill_{args.profile}")
+    run_name = f"e3_prefill_{args.profile}_B{batch}_S{seq}"
+    writer = IncrementalWriter(run_name)
     rows: List[Dict[str, Any]] = []
     c_start = canary(device, mem)
     print(f"  [canary start] {c_start * 1000:.3f} ms")
@@ -216,7 +217,7 @@ def main() -> int:
                 f"{ratio(r['kv_bytes'], base['kv_bytes'])} {r['depth'] / base['depth']:>6.2f}"
             )
 
-    csv_path = write_csv(f"e3_prefill_{args.profile}", rows)
+    csv_path = write_csv(run_name, rows)
     print(f"\n  raw: {writer.path}")
     print(f"  csv: {csv_path}")
     return 0
