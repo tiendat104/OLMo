@@ -86,5 +86,5 @@ kvcache_check/
 # for the same reason -- every later result depends on what E0 established the stack
 # can measure. Anything else here is scratch.
 q2_results/raw/*
-!q2_results/raw/e0_preflight_*.json
+!q2_results/raw/*.json
 !q2_results/raw/*.jsonl
