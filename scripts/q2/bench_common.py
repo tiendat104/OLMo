@@ -459,7 +459,10 @@ def run_metadata(profile: str, device: str, timestamp: Optional[str] = None) -> 
         timestamp=timestamp or time.strftime("%Y-%m-%dT%H:%M:%S"),
         commit=_git("rev-parse", "HEAD"),
         branch=_git("rev-parse", "--abbrev-ref", "HEAD"),
-        dirty=bool(_git("status", "--porcelain")),
+        # Scoped away from q2_results: a run writes its own outputs there, so an
+        # unscoped check reports every run as dirty and the flag stops meaning
+        # anything. What matters is whether the *code* differs from `commit`.
+        dirty=bool(_git("status", "--porcelain", "--", ":(exclude)q2_results")),
         profile=profile,
         device=device,
         dtype=str(PROFILES[profile]["dtype"]),
