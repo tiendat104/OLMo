@@ -1,0 +1,5 @@
+python 3.12.13
+torch 2.10.0+cpu
+torch_npu 2.10.0
+cann-toolkit 9.1.0 (V100R001C11B075, aarch64)
+driver 26.1.0.b030
